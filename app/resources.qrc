@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>Logos/NDI_Yellow_Inverted.ico</file>
+        <file>Logos/NDI Loop.mp4</file>
+    </qresource>
+</RCC>
