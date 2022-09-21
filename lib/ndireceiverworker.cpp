@@ -27,6 +27,9 @@ NdiReceiverWorker::~NdiReceiverWorker()
 void NdiReceiverWorker::init()
 {
     qDebug() << "+init()";
+    m_bReconnect = false;
+    m_receiverName = "QtNdiMonitorReceiver";
+    m_connectionMetadata = "";
     m_bIsProcessing = false;
     m_cNdiSourceName.clear();
     m_nAudioLevelLeft = AUDIO_LEVEL_MIN;
@@ -35,6 +38,13 @@ void NdiReceiverWorker::init()
     m_cIDX.clear();
     std::fill(std::begin(m_fAudioLevels), std::end(m_fAudioLevels), 0.0);
     qDebug() << "-init()";
+}
+
+void NdiReceiverWorker::setConnectionInfo(QString receiverName, QString connectionMetadata)
+{
+    m_receiverName = receiverName;
+    m_connectionMetadata = connectionMetadata;
+    m_bReconnect = true;
 }
 
 void NdiReceiverWorker::addVideoSink(QVideoSink *videoSink)
@@ -138,7 +148,7 @@ void NdiReceiverWorker::process()
 
         /*
         // Is anything selected
-        if (m_cNdiSourceName.isEmpty() || m_cNdiSourceName.isNull())
+        if (m_cNdiSourceName.isEmpty())
         {
             qDebug() << "No NDI source selected; continue";
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
@@ -146,8 +156,10 @@ void NdiReceiverWorker::process()
         }
         */
 
-        if (cNdiSourceName != m_cNdiSourceName)
+        if (m_bReconnect || (cNdiSourceName != m_cNdiSourceName))
         {
+            m_bReconnect = false;
+
             // Change source
 
             //cfg->setRecStatus(0);
@@ -228,7 +240,8 @@ void NdiReceiverWorker::process()
             }
 
             NDIlib_recv_create_v3_t recv_desc;
-            recv_desc.p_ndi_recv_name = "QtNdiMonitorCapture";
+            auto utf8 = m_receiverName.toUtf8();
+            recv_desc.p_ndi_recv_name = utf8.constData();
             recv_desc.source_to_connect_to = ndiList.at(nSourceChannel);
             //recv_desc.color_format = NDIlib_recv_color_format_UYVY_BGRA;
             recv_desc.color_format = NDIlib_recv_color_format_best;
@@ -236,9 +249,9 @@ void NdiReceiverWorker::process()
             recv_desc.allow_video_fields = true;
             if (true)
             {
-                qDebug() << "NDI_recv_create_desc.source_to_connect_to=" << recv_desc.source_to_connect_to.p_ndi_name;
-                qDebug() << "NDI_recv_create_desc.color_format=" << recv_desc.color_format;
-                qDebug() << "NDI_recv_create_desc.bandwidth=" << recv_desc.bandwidth;
+                qDebug().nospace() << "NDI_recv_create_desc.source_to_connect_to=" << QString(recv_desc.source_to_connect_to.p_ndi_name);
+                qDebug().nospace() << "NDI_recv_create_desc.color_format=" << recv_desc.color_format;
+                qDebug().nospace() << "NDI_recv_create_desc.bandwidth=" << recv_desc.bandwidth;
             }
 
             qDebug() << "NDIlib_recv_create_v3";
@@ -260,10 +273,21 @@ void NdiReceiverWorker::process()
                 break;
             }
 
+            NDIlib_recv_clear_connection_metadata(pNdiRecv);
+
             NDIlib_metadata_frame_t enable_hw_accel;
             enable_hw_accel.p_data = (char*)"<ndi_video_codec type=\"hardware\"/>";
-            qDebug() << "NDIlib_recv_send_metadata" << enable_hw_accel.p_data;
+            qDebug() << "NDIlib_recv_send_metadata enable_hw_accel" << enable_hw_accel.p_data;
             NDIlib_recv_send_metadata(pNdiRecv, &enable_hw_accel);
+
+            if (!m_connectionMetadata.isEmpty())
+            {
+                NDIlib_metadata_frame_t connection_metadata;
+                auto utf8 = m_connectionMetadata.toUtf8();
+                connection_metadata.p_data = (char*)utf8.constData();
+                qDebug() << "NDIlib_recv_add_connection_metadata connection_metadata" << connection_metadata.p_data;
+                NDIlib_recv_add_connection_metadata(pNdiRecv, &connection_metadata);
+            }
 
             //cfg->setRecStatus(1);
 
@@ -280,7 +304,7 @@ void NdiReceiverWorker::process()
             }
         }
 
-        if (cNdiSourceName.isEmpty() || cNdiSourceName.isNull())
+        if (cNdiSourceName.isEmpty())
         {
             qDebug() << "No NDI source selected; continue";
             if (isConnected)
@@ -490,7 +514,7 @@ void NdiReceiverWorker::processVideo(
 
     videoFrame.unmap();
 
-    foreach(QVideoSink *videoSink, *videoSinks)
+    for (auto videoSink : *videoSinks)
     {
         videoSink->setVideoFrame(videoFrame);
     }

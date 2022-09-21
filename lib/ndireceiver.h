@@ -16,12 +16,6 @@ public:
 
     NdiReceiverWorker &getWorker();
 
-    /*
-    void addVideoSink(QVideoSink *videoSink);
-    void removeVideoSink(QVideoSink *videoSink);
-    QString getNdiSourceName();
-    void setNdiSourceName(QString ndiSourceName);
-    */
     void start(QVideoSink *videoSink = nullptr);
     void stop();
 
@@ -29,8 +23,8 @@ signals:
     //...
 
 private:
-    NdiReceiverWorker workerNdiReceiver;
-    QThread threadNdiReceiver;
+    NdiReceiverWorker m_workerNdiReceiver;
+    QThread m_threadNdiReceiver;
 
     void init();
 };

@@ -21,10 +21,13 @@ public:
     explicit NdiReceiverWorker(QObject *parent = nullptr);
     ~NdiReceiverWorker();
 
+    void setConnectionInfo(QString receiverName, QString connectionMetadata);
+
     void addVideoSink(QVideoSink *videoSink);
     void removeVideoSink(QVideoSink *videoSink);
     QString getNdiSourceName();
     void setNdiSourceName(QString cNdiSourceName);
+
     void muteAudio(bool bMute);
 
 signals:
@@ -38,6 +41,10 @@ public slots:
     void process();
 
 private:
+    bool          m_bReconnect;
+    QString       m_receiverName;
+    QString       m_connectionMetadata;
+
     QList<QVideoSink*> m_videoSinks;
 
     bool m_bIsProcessing = false;

@@ -2,6 +2,15 @@
 
 #include <QDebug>
 
+#ifdef _WIN32
+#ifdef _WIN64
+#pragma comment(lib, "Processing.NDI.Lib.Advanced.x64.lib")
+#else // _WIN64
+#pragma comment(lib, "Processing.NDI.Lib.Advanced.x86.lib")
+#endif // _WIN64
+#endif
+
+
 NdiWrapper::NdiWrapper(QObject *parent) : QObject(parent)
 {
 }
@@ -134,7 +143,7 @@ QMap<QString, NDIlib_source_t> NdiWrapper::ndiFindSources(bool log)
             {
                 qDebug() << "processing" << num_sources << "NDI sources";
             }
-            for (uint32_t i = 0; i < num_sources; i++) {
+            for (uint32_t i = 0; i < num_sources; ++i) {
                 NDIlib_source_t p_source = p_sources[i];
                 QString cNdiName = QString::fromUtf8(p_source.p_ndi_name);
                 //qDebug() << "processing source" << i << cNdiName;
