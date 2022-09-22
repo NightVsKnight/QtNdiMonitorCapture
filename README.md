@@ -123,6 +123,16 @@ OBS Studio and OBS-NDI:
   * https://github.com/obsproject/obs-studio/tree/master/plugins/win-capture
   * https://github.com/obsproject/obs-studio/blob/master/libobs-winrt/winrt-capture.h
   * https://github.com/obsproject/obs-studio/blob/master/libobs-winrt/winrt-capture.cpp
+  * Display Capture:
+    * https://github.com/obsproject/obs-studio/blob/master/plugins/win-capture/dc-capture.h
+    * https://github.com/obsproject/obs-studio/blob/master/plugins/win-capture/dc-capture.c
+  * Game Capture:
+    * https://github.com/obsproject/obs-studio/blob/master/plugins/win-capture/game-capture.c
+  * Monitor Capture:
+    * https://github.com/obsproject/obs-studio/blob/master/plugins/win-capture/monitor-capture.c
+  * Window Capture:
+    * https://github.com/obsproject/obs-studio/blob/master/plugins/win-capture/window-capture.c
+
 * https://github.com/Palakis/obs-ndi
 
 Safe Queue:
