@@ -2,7 +2,6 @@
 #define NDIWRAPPER_H
 
 #include <QObject>
-#include <QSharedDataPointer>
 #include <QMap>
 #include <QVideoFrame>
 
@@ -25,7 +24,7 @@ public:
 
     static QString ndiFrameTypeToString(NDIlib_frame_format_type_e ndiFrameType);
     static QString ndiFourCCToString(NDIlib_FourCC_video_type_e ndiFourCC);
-    static QVideoFrameFormat::PixelFormat ndiPixelFormatToPixelFormat(enum NDIlib_FourCC_video_type_e ndiFourCC);
+    static QVideoFrameFormat::PixelFormat ndiPixelFormatToQtPixelFormat(NDIlib_FourCC_video_type_e ndiFourCC);
 
     bool isNdiInitialized();
     bool ndiInitialize();

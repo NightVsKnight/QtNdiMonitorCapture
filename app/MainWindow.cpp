@@ -21,26 +21,13 @@
 #endif // _WIN64
 #endif
 
-using namespace winrt;
-using namespace Windows::System;
-using namespace Windows::Foundation;
-using namespace Windows::UI;
-using namespace Windows::UI::Composition;
-using namespace Windows::Graphics::Capture;
-
-MainWindow::MainWindow(QWidget *parent)
+MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
     , m_hasShownAtLeastOnce{false}
     , m_mediaPlayer(this)
     , m_videoWidget(this)
     , m_ndiReceiver(this)
-    , m_dispatcherQueueController{nullptr}
-    , m_dispatcherQueue{nullptr}
-    , m_pSimpleCapture{nullptr}
-    , m_pNdiSend{nullptr}
-    , m_frameCount{0}
-    , m_frameSizeBytes{0}
-    , m_pNdiSendBuffers{{}}
+    , m_ndiSender(this)
 {
     setWindowTitle(QCoreApplication::applicationName());
     QIcon icon(":/Logos/NDI_Yellow_Inverted.ico");
@@ -66,61 +53,48 @@ MainWindow::~MainWindow()
 
 void MainWindow::createActions()
 {
-    actionFullScreenToggle = new QAction(tr("Full Screen Toggle"), this);
-    connect(actionFullScreenToggle, &QAction::triggered, this, &MainWindow::onActionFullScreenToggle);
+    m_pActionFullScreen = new QAction(tr("Full Screen Toggle"), this);
+    m_pActionFullScreen->setCheckable(true);
+    connect(m_pActionFullScreen, &QAction::triggered, this, &MainWindow::onActionFullScreenTriggered);
 
-    actionCaptureToggle = new QAction(tr("Monitor Capture Start"), this);
-    connect(actionCaptureToggle, &QAction::triggered, this, &MainWindow::onActionCaptureToggle);
-
-    actionExit = new QAction(tr("E&xit"), this);
-    connect(actionExit, &QAction::triggered, this, &MainWindow::onActionExit);
-
-    actionRestore = new QAction(QString(tr("Open %1")).arg(windowTitle()), this);
-    auto font = actionRestore->font();
+    m_pActionRestore = new QAction(QString(tr("Open %1")).arg(windowTitle()), this);
+    auto font = m_pActionRestore->font();
     font.setBold(true);
-    actionRestore->setFont(font);
-    actionRestore->setIcon(windowIcon());
-    connect(actionRestore, &QAction::triggered, this, &MainWindow::onActionRestoreWindow);
+    m_pActionRestore->setFont(font);
+    m_pActionRestore->setIcon(windowIcon());
+    connect(m_pActionRestore, &QAction::triggered, this, &MainWindow::onActionRestoreWindowTriggered);
+
+    m_pActionExit = new QAction(tr("E&xit"), this);
+    connect(m_pActionExit, &QAction::triggered, this, &MainWindow::onActionExitTriggered);
 }
 
 void MainWindow::createTrayIcon()
 {
-    trayIconMenu = new QMenu(this);
-    trayIconMenu->addAction(actionRestore);
-    trayIconMenu->addSeparator();
-    trayIconMenu->addAction(actionCaptureToggle);
-    trayIconMenu->addSeparator();
-    trayIconMenu->addAction(actionExit);
+    m_pTrayIconMenu = new QMenu(this);
+    m_pTrayIconMenu->addAction(m_pActionRestore);
+    m_pTrayIconMenu->addSeparator();
+    m_pMenuMonitors = m_pTrayIconMenu->addMenu(tr("Capture Monitor"));
+    m_pTrayIconMenu->addSeparator();
+    m_pTrayIconMenu->addAction(m_pActionExit);
 
-    trayIcon = new QSystemTrayIcon(this);
-    trayIcon->setContextMenu(trayIconMenu);
-    trayIcon->setIcon(windowIcon());
-    trayIcon->setToolTip(windowTitle());
-    connect(trayIcon, &QSystemTrayIcon::activated, this, &MainWindow::onTrayIconActivated);
+    m_pTrayIcon = new QSystemTrayIcon(this);
+    m_pTrayIcon->setContextMenu(m_pTrayIconMenu);
+    m_pTrayIcon->setIcon(windowIcon());
+    m_pTrayIcon->setToolTip(windowTitle());
+    connect(m_pTrayIcon, &QSystemTrayIcon::activated, this, &MainWindow::onTrayIconActivated);
 }
 
-void MainWindow::updateActionCaptureToggle()
+void MainWindow::closeEvent(QCloseEvent* event)
 {
-    if (m_pSimpleCapture)
+    if (m_ndiSender.isCapturing())
     {
-        actionCaptureToggle->setText(tr("Monitor Capture Stop"));// %1", XYZ);
-    }
-    else
-    {
-        actionCaptureToggle->setText(tr("Monitor Capture Start"));
-    }
-}
-
-void MainWindow::closeEvent(QCloseEvent *event)
-{
-    if (m_pSimpleCapture)
-    {
+        // TODO: Prompt if they really want to stop capturing and close
         hide();
         event->ignore();
     }
 }
 
-void MainWindow::showEvent(QShowEvent *)
+void MainWindow::showEvent(QShowEvent*)
 {
     qDebug() << "showEvent(...)";
     if (!m_hasShownAtLeastOnce)
@@ -134,7 +108,7 @@ void MainWindow::showEvent(QShowEvent *)
     ndiReceiverStart();
 }
 
-void MainWindow::hideEvent(QHideEvent *)
+void MainWindow::hideEvent(QHideEvent*)
 {
     qDebug() << "hideEvent(...)";
     m_mediaPlayer.stop();
@@ -142,40 +116,67 @@ void MainWindow::hideEvent(QHideEvent *)
 }
 
 #ifndef QT_NO_CONTEXTMENU
-void MainWindow::contextMenuEvent(QContextMenuEvent *event)
+void MainWindow::contextMenuEvent(QContextMenuEvent* event)
 {
     QMenu menu(this);
-    addNdiSources(&menu);
+    menuUpdateNdiSources(&menu);
     menu.addSeparator();
-    menu.addAction(actionFullScreenToggle);
+    m_pActionFullScreen->setChecked(isFullScreen());
+    menu.addAction(m_pActionFullScreen);
     menu.addSeparator();
-    updateActionCaptureToggle();
-    menu.addAction(actionCaptureToggle);
+    menuUpdateMonitors(m_pMenuMonitors);
+    menu.addMenu(m_pMenuMonitors);
     menu.addSeparator();
-    menu.addAction(actionExit);
+    menu.addAction(m_pActionExit);
     menu.exec(event->globalPos());
 }
 #endif // QT_NO_CONTEXTMENU
 
-void MainWindow::addNdiSources(QMenu *menu)
+void MainWindow::onTrayIconActivated(QSystemTrayIcon::ActivationReason reason)
 {
-    auto currentNdiSourceName = m_ndiReceiver.getWorker().getNdiSourceName();
+    switch(reason)
+    {
+    case QSystemTrayIcon::ActivationReason::DoubleClick:
+        show();
+        break;
+    case QSystemTrayIcon::ActivationReason::Context:
+        trayIconMenuUpdate();
+        break;
+    default:
+        // ignore
+        break;
+    }
+}
+
+void MainWindow::trayIconMenuUpdate()
+{
+    qDebug() << "+updateTrayIconMenu()";
+    menuUpdateMonitors(m_pMenuMonitors);
+    qDebug() << "-updateTrayIconMenu()";
+}
+
+void MainWindow::menuUpdateNdiSources(QMenu* menu)
+{
+    auto currentNdiSourceName = m_ndiReceiver.selectedSourceName();
+
     auto action = new QAction(tr("None"), this);
     action->setCheckable(true);
     if (currentNdiSourceName.isNull() || currentNdiSourceName.isEmpty())
     {
         action->setChecked(true);
     }
-    connect(action, &QAction::triggered, this, &MainWindow::onActionNdiSourceSelected);
+    connect(action, &QAction::triggered, this, &MainWindow::onActionNdiSourceTriggered);
     menu->addAction(action);
+
     auto ndiSources = NdiWrapper::get().ndiFindSources();
     uint32_t i = 0;
-    for (QMap<QString, NDIlib_source_t>::iterator it = ndiSources.begin(); it != ndiSources.end(); ++it) {
-        QString cNdiSourceName = it.key();
-        QString cNdiSourceAddress  = QString::fromUtf8(it.value().p_url_address);
+    for (auto it = ndiSources.begin(); it != ndiSources.end(); ++it)
+    {
+        auto cNdiSourceName = it.key();
+        auto cNdiSourceAddress  = QString::fromUtf8(it.value().p_url_address);
         qDebug().nospace() << "[" << i++ << "] ADDRESS: " << cNdiSourceAddress << ", NAME: " << cNdiSourceName;
 
-        QString actionText = cNdiSourceName;
+        auto actionText = cNdiSourceName;
         if (true)
         {
             actionText += " {address:" + cNdiSourceAddress + "}";
@@ -187,69 +188,107 @@ void MainWindow::addNdiSources(QMenu *menu)
             action->setChecked(true);
         }
         action->setData(cNdiSourceName);
-        connect(action, &QAction::triggered, this, &MainWindow::onActionNdiSourceSelected);
+        connect(action, &QAction::triggered, this, &MainWindow::onActionNdiSourceTriggered);
         menu->addAction(action);
     }
 }
 
-void MainWindow::onActionNdiSourceSelected()
+bool operator < (const Monitor &lhs, const Monitor &rhs)
 {
-    auto action = qobject_cast<QAction*>(sender());
-    if (!action) return;
-    QString cNdiSourceName = (action->text() == tr("None")) ? nullptr : action->data().toString();
-    qDebug() << "cNdiSourceName" << cNdiSourceName;
-    m_ndiReceiver.getWorker().setNdiSourceName(cNdiSourceName);
+    return lhs.ClassName() < rhs.ClassName();
 }
 
-void MainWindow::onActionFullScreenToggle()
+void MainWindow::menuUpdateMonitors(QMenu* menu)
 {
-    qDebug() << "onActionFullScreenToggle()";
-    setFullScreen(windowState() != Qt::WindowFullScreen);
+    auto monitors = getMonitors();
+    std::sort(monitors.begin(), monitors.end());
+
+    auto selectedMonitorName = m_selectedMonitorName;
+    qDebug() << "selectedMonitorName" << selectedMonitorName;
+
+    menu->clear();
+
+    auto action = new QAction(tr("None"), menu);
+    action->setData(0);
+    action->setCheckable(true);
+    if (selectedMonitorName.isEmpty())
+    {
+        action->setChecked(true);
+    }
+    connect(action, &QAction::triggered, this, &MainWindow::onActionMonitorTriggered);
+    menu->addAction(action);
+
+    for (auto monitor : monitors)
+    {
+        auto monitorName = QString::fromStdWString(monitor.ClassName());
+
+        auto actionText = monitorName;
+        auto action = new QAction(actionText, menu);
+        action->setCheckable(true);
+
+        if (monitorName == selectedMonitorName)
+        {
+            action->setChecked(true);
+        }
+
+        connect(action, &QAction::triggered, this, &MainWindow::onActionMonitorTriggered);
+        menu->addAction(action);
+    }
 }
 
-void MainWindow::onActionCaptureToggle()
+void MainWindow::onActionNdiSourceTriggered()
 {
+    qDebug() << "onActionNdiSourceTriggered()";
+
     auto action = qobject_cast<QAction*>(sender());
     if (!action) return;
-    auto hmonitor = (HMONITOR)action->data().toULongLong();
-    if (m_pSimpleCapture)
+    auto actionText = action->text();
+
+    QString selectedNdiSourceName = (actionText == tr("None")) ? nullptr : action->data().toString();
+    qDebug() << "selectedNdiSourceName" << selectedNdiSourceName;
+
+    m_ndiReceiver.selectSource(selectedNdiSourceName);
+}
+
+void MainWindow::onActionMonitorTriggered()
+{
+    qDebug() << "onActionMonitorTriggered()";
+
+    auto action = qobject_cast<QAction*>(sender());
+    if (!action) return;
+    auto actionText = action->text();
+
+    auto selectedMonitorName = (actionText == tr("None")) ? "" : actionText;
+    qDebug() << "selectedMonitorName" << selectedMonitorName;
+
+    m_selectedMonitorName = selectedMonitorName;
+
+    if (selectedMonitorName.isEmpty())
     {
         captureStop();
     }
     else
     {
-        captureStart(hmonitor);
+        captureStart();
     }
 }
 
-void MainWindow::onActionRestoreWindow()
+void MainWindow::onActionFullScreenTriggered()
 {
+    qDebug() << "onActionFullScreenTriggered()";
+    setFullScreen(!isFullScreen());
+}
+
+void MainWindow::onActionRestoreWindowTriggered()
+{
+    qDebug() << "onActionRestoreWindowTriggered()";
     show();
 }
 
-void MainWindow::onActionExit()
+void MainWindow::onActionExitTriggered()
 {
-    qDebug() << "onActionExit()";
+    qDebug() << "onActionExitTriggered()";
     QApplication::exit(0);
-}
-
-void MainWindow::onTrayIconActivated(QSystemTrayIcon::ActivationReason reason)
-{
-    switch(reason)
-    {
-    case QSystemTrayIcon::ActivationReason::DoubleClick:
-        show();
-        break;
-    case QSystemTrayIcon::ActivationReason::Context:
-    {
-        qDebug() << "onTrayIconActivated QSystemTrayIcon::ActivationReason::Context";
-        updateActionCaptureToggle();
-        break;
-    }
-    default:
-        // ignore
-        break;
-    }
 }
 
 void MainWindow::setFullScreen(bool fullScreen)
@@ -269,22 +308,29 @@ void MainWindow::ndiReceiverStart()
 {
     qDebug() << "+ndiReceiverStart()";
     ndiReceiverStop();
-    connect(&m_ndiReceiver.getWorker(), &NdiReceiverWorker::ndiSourceConnected, this, &MainWindow::onNdiRecieverConnected);
-    connect(&m_ndiReceiver.getWorker(), &NdiReceiverWorker::ndiSourceDisconnected, this, &MainWindow::onNdiRecieverDisconnected);
+    connect(&m_ndiReceiver, &NdiReceiver::onMetadataReceived, this, &MainWindow::onNdiReceiverMetadataReceived);
+    connect(&m_ndiReceiver, &NdiReceiver::onSourceConnected, this, &MainWindow::onNdiReceiverSourceConnected);
+    connect(&m_ndiReceiver, &NdiReceiver::onSourceDisconnected, this, &MainWindow::onNdiReceiverSourceDisconnected);
     m_ndiReceiver.start(m_videoWidget.videoSink());
     qDebug() << "-ndiReceiverStart()";
 }
 
-void MainWindow::onNdiRecieverConnected()
+void MainWindow::onNdiReceiverSourceConnected(QString sourceName)
 {
-    qDebug() << "onNdiRecieverConnected()";
+    qDebug() << "onNdiReceiverSourceConnected(" << sourceName << ")";
     qDebug() << "m_mediaPlayer.stop()";
     m_mediaPlayer.stop();
 }
 
-void MainWindow::onNdiRecieverDisconnected()
+void MainWindow::onNdiReceiverMetadataReceived(QString metadata)
 {
-    qDebug() << "onNdiRecieverDisconnected()";
+    qDebug() << "onNdiReceiverMetadataReceived(" << metadata << ")";
+    //...
+}
+
+void MainWindow::onNdiReceiverSourceDisconnected(QString sourceName)
+{
+    qDebug() << "onNdiReceiverSourceDisconnected(" << sourceName << ")";
     qDebug() << "m_mediaPlayer.play()";
     m_mediaPlayer.play();
 }
@@ -292,38 +338,20 @@ void MainWindow::onNdiRecieverDisconnected()
 void MainWindow::ndiReceiverStop()
 {
     qDebug() << "+ndiReceiverStop()";
-    disconnect(&m_ndiReceiver.getWorker(), &NdiReceiverWorker::ndiSourceConnected, this, &MainWindow::onNdiRecieverConnected);
-    disconnect(&m_ndiReceiver.getWorker(), &NdiReceiverWorker::ndiSourceDisconnected, this, &MainWindow::onNdiRecieverDisconnected);
+    disconnect(&m_ndiReceiver, &NdiReceiver::onMetadataReceived, this, &MainWindow::onNdiReceiverMetadataReceived);
+    disconnect(&m_ndiReceiver, &NdiReceiver::onSourceConnected, this, &MainWindow::onNdiReceiverSourceConnected);
+    disconnect(&m_ndiReceiver, &NdiReceiver::onSourceDisconnected, this, &MainWindow::onNdiReceiverSourceDisconnected);
     m_ndiReceiver.stop();
     qDebug() << "-ndiReceiverStop()";
 }
 
+//
+// public methods
+//
+
 std::vector<Monitor> MainWindow::getMonitors()
 {
     return EnumerateMonitors();
-}
-
-void MainWindow::onMonitorSelected(int index)
-{
-    if (index == 0) return;
-    auto monitors = getMonitors();
-    auto monitor = monitors[index - 1];
-    captureStart(monitor.Hmonitor());
-}
-
-// Direct3D11CaptureFramePool [in SimpleCapture] requires a DispatcherQueue
-auto CreateDispatcherQueueController()
-{
-    namespace abi = ABI::Windows::System;
-    DispatcherQueueOptions options
-    {
-        sizeof(DispatcherQueueOptions),
-        DQTYPE_THREAD_CURRENT,
-        DQTAT_COM_STA
-    };
-    Windows::System::DispatcherQueueController controller{ nullptr };
-    check_hresult(CreateDispatcherQueueController(options, reinterpret_cast<abi::IDispatcherQueueController**>(put_abi(controller))));
-    return controller;
 }
 
 void MainWindow::captureStart(HMONITOR hmonitor)
@@ -350,83 +378,13 @@ void MainWindow::captureStart(HMONITOR hmonitor)
         }
     }
 
-    if (m_dispatcherQueueController == nullptr)
-    {
-        m_dispatcherQueueController = CreateDispatcherQueueController();
-        m_dispatcherQueue = m_dispatcherQueueController.DispatcherQueue();
-    }
+    connect(&m_ndiSender, &NdiSender::onMetadataReceived, this, &MainWindow::onNdiSenderMetadataReceived);
+    connect(&m_ndiSender, &NdiSender::onReceiverCountChanged, this, &MainWindow::onNdiSenderReceiverCountChanged);
 
-    // Enqueue our capture work on the dispatcher
-    auto success = m_dispatcherQueue.TryEnqueue(Windows::System::DispatcherQueuePriority::High,
-    [this, hmonitor]()
-    {
-        auto item = CreateCaptureItemForMonitor(hmonitor);
-
-        // TODO: Make this work for multiple pixel formats and then allow this to be passed in as a parameter
-        // Must be compatible with NDI_video_frame.FourCC [below]
-        auto pixelFormat = DirectXPixelFormat::B8G8R8A8UIntNormalized;
-        uint pixelSizeBytes = 4; // TODO: auto-calculate this byte size based on pixelFormat
-
-        m_pSimpleCapture = new SimpleCapture();
-        (*m_pSimpleCapture).StartCapture(item, pixelFormat, pixelSizeBytes, NUM_CAPTURE_FRAME_BUFFERS,
-        [this](SimpleCapture*, Direct3D11CaptureFrame frame) -> bool
-        {
-            auto pNdiSend = m_pNdiSend.load();
-            if (!pNdiSend || NDIlib_send_get_no_connections(pNdiSend, 0) == 0)
-                return false;
-            if (frame == nullptr)
-            {
-                // End of capture
-                NDIlib_send_send_video_async_v2(pNdiSend, NULL);
-            }
-            return true;
-        },
-        [this](SimpleCapture*, uint frameWidth, uint frameHeight, uint frameStrideBytes, void* pFrameBuffer)
-        {
-            auto pNdiSend = m_pNdiSend.load();
-            if (!pNdiSend || !pFrameBuffer)
-                return;
-
-            auto thisFrameSizeBytes = frameStrideBytes * frameHeight;
-            if (m_frameSizeBytes < thisFrameSizeBytes)
-            {
-                qDebug() << "growing m_pNdiSendBuffers from" << m_frameSizeBytes << "to" << thisFrameSizeBytes << "bytes";
-                m_frameSizeBytes = thisFrameSizeBytes;
-                for (int i = 0; i < NUM_CAPTURE_FRAME_BUFFERS; ++i)
-                {
-                    if (m_pNdiSendBuffers[i])
-                    {
-                        delete[] m_pNdiSendBuffers[i];
-                    }
-                    m_pNdiSendBuffers[i] = new uint8_t[thisFrameSizeBytes];
-                }
-            }
-
-            uint8_t *pOutBuffer = m_pNdiSendBuffers[m_frameCount++ % NUM_CAPTURE_FRAME_BUFFERS];
-            memcpy(pOutBuffer, pFrameBuffer, thisFrameSizeBytes);
-
-            NDIlib_video_frame_v2_t NDI_video_frame;
-            NDI_video_frame.xres = frameWidth;
-            NDI_video_frame.yres = frameHeight;
-            // Must be compatible with pixelFormat [above]
-            NDI_video_frame.FourCC = NDIlib_FourCC_type_BGRA;
-            NDI_video_frame.line_stride_in_bytes = frameStrideBytes;
-            NDI_video_frame.p_data = pOutBuffer;
-
-            NDIlib_send_send_video_async_v2(pNdiSend, &NDI_video_frame);
-        });
-    });
-    WINRT_VERIFY(success);
-
-    NDIlib_send_create_t NDI_send_create_desc;
-    NDI_send_create_desc.p_ndi_name = "ScreenCaptureForHMONITOR";
-    m_pNdiSend = NDIlib_send_create(&NDI_send_create_desc);
-    Q_ASSERT(m_pNdiSend);
-
-    // TODO: Capture and send Audio in dedicated thread
+    m_ndiSender.start(hmonitor);
 
     // Never hide this icon once it is shown
-    trayIcon->show();
+    m_pTrayIcon->show();
 
     qDebug() << "-captureStart(...)";
 }
@@ -434,28 +392,20 @@ void MainWindow::captureStart(HMONITOR hmonitor)
 void MainWindow::captureStop()
 {
     qDebug() << "+captureStop()";
-    auto pSimpleCapture = m_pSimpleCapture.exchange(nullptr);
-    if (pSimpleCapture)
-    {
-        pSimpleCapture->Close();
-        pSimpleCapture = nullptr;
-    }
-    auto pNdiSend = m_pNdiSend.exchange(nullptr);
-    if (pNdiSend)
-    {
-        NDIlib_send_send_video_async_v2(pNdiSend, NULL);
-        NDIlib_send_destroy(pNdiSend);
-        pNdiSend = nullptr;
-    }
-    for (int i = 0; i < NUM_CAPTURE_FRAME_BUFFERS; ++i)
-    {
-        if (m_pNdiSendBuffers[i])
-        {
-            delete[] m_pNdiSendBuffers[i];
-            m_pNdiSendBuffers[i] = nullptr;
-        }
-    }
-    m_frameCount = 0;
-    m_frameSizeBytes = 0;
+    disconnect(&m_ndiSender, &NdiSender::onMetadataReceived, this, &MainWindow::onNdiSenderMetadataReceived);
+    disconnect(&m_ndiSender, &NdiSender::onReceiverCountChanged, this, &MainWindow::onNdiSenderReceiverCountChanged);
+    m_ndiSender.stop();
     qDebug() << "-captureStop()";
+}
+
+void MainWindow::onNdiSenderMetadataReceived(QString metadata)
+{
+    qDebug() << "onNdiSenderMetadataReceived(" << metadata << ")";
+    //...
+}
+
+void MainWindow::onNdiSenderReceiverCountChanged(int receiverCount)
+{
+    qDebug() << "onReceiverCountChanged(" << receiverCount << ")";
+    //...
 }

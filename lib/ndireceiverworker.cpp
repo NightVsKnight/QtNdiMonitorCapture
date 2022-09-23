@@ -6,8 +6,18 @@
 
 #include "ndiwrapper.h"
 
-NdiReceiverWorker::NdiReceiverWorker(QObject* parent)
-    : QObject(parent)
+
+#ifdef _WIN32
+#ifdef _WIN64
+#pragma comment(lib, "Processing.NDI.Lib.Advanced.x64.lib")
+#else // _WIN64
+#pragma comment(lib, "Processing.NDI.Lib.Advanced.x86.lib")
+#endif // _WIN64
+#endif
+
+
+NdiReceiverWorker::NdiReceiverWorker(QObject* pParent)
+    : QObject(pParent)
 {
     init();
 }
@@ -29,14 +39,11 @@ void NdiReceiverWorker::init()
     qDebug() << "+init()";
     m_bReconnect = false;
     m_receiverName = "QtNdiMonitorReceiver";
-    m_connectionMetadata = "";
-    m_bIsProcessing = false;
-    m_cNdiSourceName.clear();
-    m_nAudioLevelLeft = AUDIO_LEVEL_MIN;
-    m_nAudioLevelRight = AUDIO_LEVEL_MIN;
+    m_connectionMetadata = nullptr;
+    m_bIsRunning = false;
+    m_selectedSourceName = nullptr;
     m_bMuteAudio = false;
-    m_cIDX.clear();
-    std::fill(std::begin(m_fAudioLevels), std::end(m_fAudioLevels), 0.0);
+    m_cIDX = nullptr;
     qDebug() << "-init()";
 }
 
@@ -47,30 +54,30 @@ void NdiReceiverWorker::setConnectionInfo(QString receiverName, QString connecti
     m_bReconnect = true;
 }
 
-void NdiReceiverWorker::addVideoSink(QVideoSink *videoSink)
+void NdiReceiverWorker::addVideoSink(QVideoSink* pVideoSink)
 {
-    if (videoSink && !m_videoSinks.contains(videoSink))
+    if (pVideoSink && !m_videoSinks.contains(pVideoSink))
     {
-        m_videoSinks.append(videoSink);
+        m_videoSinks.append(pVideoSink);
     }
 }
 
-void NdiReceiverWorker::removeVideoSink(QVideoSink *videoSink)
+void NdiReceiverWorker::removeVideoSink(QVideoSink* pVideoSink)
 {
-    if (videoSink)
+    if (pVideoSink)
     {
-        m_videoSinks.removeAll(videoSink);
+        m_videoSinks.removeAll(pVideoSink);
     }
 }
 
-QString NdiReceiverWorker::getNdiSourceName()
+QString NdiReceiverWorker::selectedSourceName()
 {
-    return m_cNdiSourceName;
+    return m_selectedSourceName;
 }
 
-void NdiReceiverWorker::setNdiSourceName(QString cNdiSourceName)
+void NdiReceiverWorker::selectSource(QString sourceName)
 {
-    m_cNdiSourceName = cNdiSourceName;
+    m_selectedSourceName = sourceName;
 }
 
 void NdiReceiverWorker::muteAudio(bool bMute)
@@ -78,34 +85,28 @@ void NdiReceiverWorker::muteAudio(bool bMute)
     m_bMuteAudio = bMute;
 }
 
-void NdiReceiverWorker::setAudioLevelLeft(int level)
+void NdiReceiverWorker::sendMetadata(QString metadata)
 {
-    m_nAudioLevelLeft = level;
-    Q_EMIT audioLevelLeftChanged(m_nAudioLevelLeft);
-}
-
-void NdiReceiverWorker::setAudioLevelRight(int level)
-{
-    m_nAudioLevelRight = level;
-    Q_EMIT audioLevelRightChanged(m_nAudioLevelRight);
+    if (!m_bIsRunning) return;
+    m_listMetadatasToSend.append(metadata);
 }
 
 void NdiReceiverWorker::stop()
 {
     qDebug() << "+stop()";
-    m_bIsProcessing = false;
+    m_bIsRunning = false;
     qDebug() << "-stop()";
 }
 
-void NdiReceiverWorker::process()
+void NdiReceiverWorker::run()
 {
-    qDebug() << "+process()";
+    qDebug() << "+run()";
 
-    if (m_bIsProcessing) return;
-    m_bIsProcessing = true;
+    if (m_bIsRunning) return;
+    m_bIsRunning = true;
 
-    QAudioSink *pAudioOutputSink = nullptr;
-    QIODevice *pAudioIoDevice = nullptr;
+    QAudioSink* pAudioOutputSink = nullptr;
+    QIODevice* pAudioIoDevice = nullptr;
 
     QAudioFormat audioFormat;
     audioFormat.setSampleRate(44100);
@@ -132,15 +133,17 @@ void NdiReceiverWorker::process()
     NDIlib_audio_frame_interleaved_32f_t a32f;
     size_t nAudioBufferSize = 0;
 
-    QString                     cNdiSourceName;
+    QString                     selectedSourceName;
     int64_t                     nVTimestamp = 0;
     int64_t                     nATimestamp = 0;
     NDIlib_recv_instance_t      pNdiRecv = nullptr;
     NDIlib_framesync_instance_t pNdiFrameSync = nullptr;
 
+    QString metadataSend;
+
     bool isConnected = false;
 
-    while (m_bIsProcessing)
+    while (m_bIsRunning)
     {
         //
         // TODO: CLEAN UP THIS MESS: BEGIN!
@@ -156,7 +159,7 @@ void NdiReceiverWorker::process()
         }
         */
 
-        if (m_bReconnect || (cNdiSourceName != m_cNdiSourceName))
+        if (m_bReconnect || (selectedSourceName != m_selectedSourceName))
         {
             m_bReconnect = false;
 
@@ -187,11 +190,11 @@ void NdiReceiverWorker::process()
             int nSourceChannel = -1;
             for (int i = 0; i < ndiSources.size(); i++)
             {
-                auto _cNdiSourceName = QString::fromUtf8(ndiList.at(i).p_ndi_name);
-                if (QString::compare(_cNdiSourceName, m_cNdiSourceName, Qt::CaseInsensitive) == 0)
+                auto _selectedSourceName = QString::fromUtf8(ndiList.at(i).p_ndi_name);
+                if (QString::compare(_selectedSourceName, m_selectedSourceName, Qt::CaseInsensitive) == 0)
                 {
                     nSourceChannel = i;
-                    cNdiSourceName = _cNdiSourceName;
+                    selectedSourceName = _selectedSourceName;
                     break;
                 }
             }
@@ -201,7 +204,7 @@ void NdiReceiverWorker::process()
                 if (isConnected)
                 {
                     isConnected = false;
-                    emit ndiSourceDisconnected();
+                    emit onSourceConnected(selectedSourceName);
                 }
                 std::this_thread::sleep_for(std::chrono::milliseconds(1000));
                 continue;
@@ -209,7 +212,7 @@ void NdiReceiverWorker::process()
 
             if (true)
             {
-                qDebug() << "NDI source activated: " << cNdiSourceName;
+                qDebug() << "NDI source activated: " << selectedSourceName;
             }
 
             if (true)
@@ -225,7 +228,7 @@ void NdiReceiverWorker::process()
 
             if (pNdiRecv != nullptr)
             {
-                if (pAudioOutputSink && m_bIsProcessing)
+                if (pAudioOutputSink && m_bIsRunning)
                 {
                     if (true)
                     {
@@ -291,7 +294,7 @@ void NdiReceiverWorker::process()
 
             //cfg->setRecStatus(1);
 
-            if (pAudioOutputSink && m_bIsProcessing)
+            if (pAudioOutputSink && m_bIsRunning)
             {
                 if (pAudioIoDevice == nullptr)
                 {
@@ -304,13 +307,13 @@ void NdiReceiverWorker::process()
             }
         }
 
-        if (cNdiSourceName.isEmpty())
+        if (selectedSourceName.isEmpty())
         {
             qDebug() << "No NDI source selected; continue";
             if (isConnected)
             {
                 isConnected = false;
-                emit ndiSourceDisconnected();
+                emit onSourceDisconnected(selectedSourceName);
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             continue;
@@ -325,7 +328,7 @@ void NdiReceiverWorker::process()
             if (isConnected)
             {
                 isConnected = false;
-                emit ndiSourceDisconnected();
+                emit onSourceDisconnected(selectedSourceName);
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(250));
             continue;
@@ -334,7 +337,7 @@ void NdiReceiverWorker::process()
         if (!isConnected)
         {
             isConnected = true;
-            emit ndiSourceConnected();
+            emit onSourceConnected(selectedSourceName);
         }
 
         //cNdiSourceName = m_cNdiSourceName;
@@ -352,7 +355,7 @@ void NdiReceiverWorker::process()
         //qDebug() << "video_frame.p_data=" << video_frame.p_data;
         if (video_frame.p_data && (video_frame.timestamp > nVTimestamp))
         {
-            //qDebug() << "video_frame";
+            //qDebug() << "v";//ideo_frame";
             nVTimestamp = video_frame.timestamp;
             processVideo(&video_frame, &m_videoSinks);
         }
@@ -367,28 +370,45 @@ void NdiReceiverWorker::process()
         //qDebug() << "audio_frame.p_data=" << audio_frame.p_data;
         if (audio_frame.p_data && (audio_frame.timestamp > nATimestamp))
         {
-            //qDebug() << "audio_frame";
+            //qDebug() << "a";//udio_frame";
             nATimestamp = audio_frame.timestamp;
             processAudio(&audio_frame, &a32f, &nAudioBufferSize, pAudioIoDevice);
         }
         NDIlib_framesync_free_audio(pNdiFrameSync, &audio_frame);
 
         //
-        // METADATA
+        // METADATA RECV
         //
-        auto frameType = NDIlib_recv_capture_v2(pNdiRecv, nullptr, nullptr, &metadata_frame, 0);
-        switch(frameType)
+        switch(NDIlib_recv_capture_v2(pNdiRecv, nullptr, nullptr, &metadata_frame, 0))
         {
         case NDIlib_frame_type_e::NDIlib_frame_type_metadata:
-            qDebug() << "NDIlib_frame_type_metadata";
-            processMetaData(&metadata_frame);
+        {
+            //qDebug() << "m";//"etadata_frame";
+            auto metadata = QString::fromUtf8(metadata_frame.p_data);
+            NDIlib_recv_free_metadata(pNdiRecv, &metadata_frame);
+            qDebug() << "NDIlib_recv_capture_v2 NDIlib_frame_type_metadata" << metadata;
+            emit onMetadataReceived(metadata);
             break;
+        }
         case NDIlib_frame_type_e::NDIlib_frame_type_status_change:
-            qDebug() << "NDIlib_frame_type_status_change";
+            qDebug() << "NDIlib_recv_capture_v2 NDIlib_frame_type_status_change";
             break;
         default:
             // ignore
             break;
+        }
+
+        //
+        // METADATA SEND
+        //
+        if (!m_listMetadatasToSend.isEmpty())
+        {
+            metadataSend = m_listMetadatasToSend.takeFirst();
+            NDIlib_metadata_frame_t metadata_frame;
+            auto utf8 = metadataSend.toUtf8();
+            metadata_frame.p_data = (char*)utf8.constData();
+            qDebug() << "NDIlib_recv_send_metadata" << metadataSend;
+            NDIlib_recv_send_metadata(pNdiRecv, &metadata_frame);
         }
 
         // TODO: More accurate sleep that subtracts the duration of this loop
@@ -421,13 +441,7 @@ void NdiReceiverWorker::process()
         pAudioIoDevice = nullptr;
     }
 
-    qDebug() << "-process()";
-}
-
-void NdiReceiverWorker::processMetaData(NDIlib_metadata_frame_t *pNdiMetadataFrame)
-{
-    QString metadata = QString::fromUtf8(pNdiMetadataFrame->p_data, pNdiMetadataFrame->length);
-    qDebug() << "metadata" << metadata;
+    qDebug() << "-run()";
 }
 
 //#define MY_VERBOSE_LOGGING
@@ -438,13 +452,13 @@ QString withCommas(int value)
 }
 
 void NdiReceiverWorker::processVideo(
-        NDIlib_video_frame_v2_t *pNdiVideoFrame,
-        QList<QVideoSink*> *videoSinks)
+        NDIlib_video_frame_v2_t* pVideoFrameNdi,
+        QList<QVideoSink*>* pVideoSinks)
 {
-    auto ndiWidth = pNdiVideoFrame->xres;
-    auto ndiHeight = pNdiVideoFrame->yres;
-    auto ndiLineStrideInBytes = pNdiVideoFrame->line_stride_in_bytes;
-    auto ndiPixelFormat = pNdiVideoFrame->FourCC;
+    auto ndiWidth = pVideoFrameNdi->xres;
+    auto ndiHeight = pVideoFrameNdi->yres;
+    auto ndiLineStrideInBytes = pVideoFrameNdi->line_stride_in_bytes;
+    auto ndiPixelFormat = pVideoFrameNdi->FourCC;
 #if defined(MY_VERBOSE_LOGGING)
     qDebug();
     qDebug() << "+processVideo(...)";
@@ -455,7 +469,7 @@ void NdiReceiverWorker::processVideo(
     qDebug() << "pNdiVideoFrame->frame_format_type" << ndiFrameTypeToString(ndiFrameType);
     qDebug() << "pNdiVideoFrame->FourCC:" << ndiFourCCToString(ndiPixelFormat);
 #endif
-    auto pixelFormat = NdiWrapper::ndiPixelFormatToPixelFormat(ndiPixelFormat);
+    auto pixelFormat = NdiWrapper::ndiPixelFormatToQtPixelFormat(ndiPixelFormat);
 #if defined(MY_VERBOSE_LOGGING) && false
     qDebug() << "pixelFormat" << QVideoFrameFormat::pixelFormatToString(pixelFormat);
 #endif
@@ -477,7 +491,7 @@ void NdiReceiverWorker::processVideo(
     }
 
     auto pDstY = videoFrame.bits(0);
-    auto pSrcY = pNdiVideoFrame->p_data;
+    auto pSrcY = pVideoFrameNdi->p_data;
     auto pDstUV = videoFrame.bits(1);
     auto pSrcUV = pSrcY + (ndiLineStrideInBytes * ndiHeight);
     for (int line = 0; line < ndiHeight; ++line)
@@ -514,9 +528,9 @@ void NdiReceiverWorker::processVideo(
 
     videoFrame.unmap();
 
-    for (auto videoSink : *videoSinks)
+    foreach (auto pVideoSink, *pVideoSinks)
     {
-        videoSink->setVideoFrame(videoFrame);
+        pVideoSink->setVideoFrame(videoFrame);
     }
 
 #if defined(MY_VERBOSE_LOGGING)
@@ -525,10 +539,10 @@ void NdiReceiverWorker::processVideo(
 }
 
 void NdiReceiverWorker::processAudio(
-        NDIlib_audio_frame_v2_t *pNdiAudioFrame,
-        NDIlib_audio_frame_interleaved_32f_t *pA32f,
-        size_t *pnAudioBufferSize,
-        QIODevice *pAudioIoDevice)
+        NDIlib_audio_frame_v2_t* pAudioFrameNdi,
+        NDIlib_audio_frame_interleaved_32f_t* pA32f,
+        size_t* pnAudioBufferSize,
+        QIODevice* pAudioIoDevice)
 {
 #if defined(MY_VERBOSE_LOGGING)
     qDebug();
@@ -545,7 +559,7 @@ void NdiReceiverWorker::processAudio(
         return;
     }
 
-    size_t nThisAudioBufferSize = pNdiAudioFrame->no_samples * pNdiAudioFrame->no_channels * sizeof(float);
+    size_t nThisAudioBufferSize = pAudioFrameNdi->no_samples * pAudioFrameNdi->no_channels * sizeof(float);
 #if defined(MY_VERBOSE_LOGGING)
     qDebug() << "nThisAudioBufferSize" << nThisAudioBufferSize;
 #endif
@@ -560,7 +574,7 @@ void NdiReceiverWorker::processAudio(
         pA32f->p_data = new float[nThisAudioBufferSize];
     }
 
-    NDIlib_util_audio_to_interleaved_32f_v2(pNdiAudioFrame, pA32f);
+    NDIlib_util_audio_to_interleaved_32f_v2(pAudioFrameNdi, pA32f);
 
     size_t nWritten = 0;
     do

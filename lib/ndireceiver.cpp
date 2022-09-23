@@ -18,16 +18,18 @@ NdiReceiver::~NdiReceiver()
 void NdiReceiver::init()
 {
     qDebug() << "+init()";
+
     m_threadNdiReceiver.setObjectName("threadNdiReceiver");
     m_workerNdiReceiver.moveToThread(&m_threadNdiReceiver);
-    connect(&m_threadNdiReceiver, &QThread::started, &m_workerNdiReceiver, &NdiReceiverWorker::process);
-    connect(&m_threadNdiReceiver, &QThread::finished, &m_workerNdiReceiver, &NdiReceiverWorker::stop);
-    qDebug() << "-init()";
-}
 
-NdiReceiverWorker &NdiReceiver::getWorker()
-{
-    return m_workerNdiReceiver;
+    connect(&m_threadNdiReceiver, &QThread::started, &m_workerNdiReceiver, &NdiReceiverWorker::run);
+    connect(&m_threadNdiReceiver, &QThread::finished, &m_workerNdiReceiver, &NdiReceiverWorker::stop);
+
+    connect(&m_workerNdiReceiver, &NdiReceiverWorker::onMetadataReceived, this, &NdiReceiver::onMetadataReceived);
+    connect(&m_workerNdiReceiver, &NdiReceiverWorker::onSourceConnected, this, &NdiReceiver::onSourceConnected);
+    connect(&m_workerNdiReceiver, &NdiReceiverWorker::onSourceDisconnected, this, &NdiReceiver::onSourceDisconnected);
+
+    qDebug() << "-init()";
 }
 
 void NdiReceiver::start(QVideoSink *videoSink)

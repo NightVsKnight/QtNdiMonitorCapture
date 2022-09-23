@@ -1,8 +1,8 @@
 #include <QApplication>
 #include <QCommandLineParser>
+#include <QDebug>
 #include <QLocale>
 #include <QTranslator>
-#include <QDebug>
 
 #include "MainWindow.h"
 #include "ndiwrapper.h"
@@ -21,8 +21,8 @@ int main(int argc, char *argv[])
     winrt::init_apartment(apartment_type::single_threaded);
 
     QTranslator translator;
-    const QStringList uiLanguages = QLocale::system().uiLanguages();
-    for (const QString &locale : uiLanguages) {
+    auto uiLanguages = QLocale::system().uiLanguages();
+    for (auto locale : uiLanguages) {
         const QString baseName = "QtNdiMonitorCapture_" + QLocale(locale).name();
         if (translator.load(":/i18n/" + baseName)) {
             app.installTranslator(&translator);
@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
     parser.addOption(optionMode);
     parser.parse(app.arguments());
     auto appMode = parser.value(optionMode);
-    if (appMode.isNull() || appMode.isEmpty())
+    if (appMode.isEmpty())
     {
         appMode = appModeDefault;
     }

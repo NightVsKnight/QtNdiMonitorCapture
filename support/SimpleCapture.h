@@ -14,6 +14,9 @@ using namespace winrt::Windows::Graphics;
 class SimpleCapture
 {
 public:
+    typedef bool (*CALLBACK_ON_FRAME)(void* pObj, SimpleCapture* pSender, Direct3D11CaptureFrame frame);
+    typedef void (*CALLBACK_ON_FRAME_BUFFER)(void* pObj, SimpleCapture* pSender, uint width, uint height, uint strideBytes, void* pFrameBuffer);
+
     SimpleCapture();
     ~SimpleCapture();
 
@@ -27,8 +30,9 @@ public:
             DirectXPixelFormat pixelFormat,
             size_t pixelSizeBytes,
             uint frameBufferCount,
-            function<bool(SimpleCapture *pSender, Direct3D11CaptureFrame frame)> callbackFrame,
-            function<void(SimpleCapture *pSender, uint width, uint height, uint strideBytes, void *pFrameBuffer)> callbackFrameBytes);
+            void* pObj,
+            CALLBACK_ON_FRAME callbackFrame,
+            CALLBACK_ON_FRAME_BUFFER callbackFrameBytes);
     void Close();
 
 private:
@@ -44,8 +48,9 @@ private:
     DirectXPixelFormat m_pixelFormat;
     size_t m_pixelSizeBytes;
     uint m_frameBufferCount;
-    function<bool(SimpleCapture*,Direct3D11CaptureFrame)> m_pCallbackProcessFrame;
-    function<void(SimpleCapture*,uint,uint,uint,void*)> m_pCallbackProcessFrameBytes;
+    void* m_pObj;
+    CALLBACK_ON_FRAME m_pCallbackProcessFrame;
+    CALLBACK_ON_FRAME_BUFFER m_pCallbackProcessFrameBytes;
 
     SizeInt32 m_frameSize;
 

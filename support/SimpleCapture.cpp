@@ -51,8 +51,9 @@ void SimpleCapture::StartCapture(
         DirectXPixelFormat pixelFormat,
         size_t pixelSizeBytes,
         uint frameBufferCount,
-        function<bool(SimpleCapture*,Direct3D11CaptureFrame)> callbackProcessFrame,
-        function<void(SimpleCapture*,uint,uint,uint,void*)> callbackProcessFrameBytes)
+        void* pObj,
+        CALLBACK_ON_FRAME callbackProcessFrame,
+        CALLBACK_ON_FRAME_BUFFER callbackProcessFrameBytes)
 {
     Close();
 
@@ -60,6 +61,7 @@ void SimpleCapture::StartCapture(
     m_pixelFormat = pixelFormat;
     m_pixelSizeBytes = pixelSizeBytes;
     m_frameBufferCount = frameBufferCount;
+    m_pObj = pObj;
     m_pCallbackProcessFrame = callbackProcessFrame;
     m_pCallbackProcessFrameBytes = callbackProcessFrameBytes;
 
@@ -115,6 +117,7 @@ void SimpleCapture::Close()
         m_d3dDevice = nullptr;
         m_pCallbackProcessFrameBytes = nullptr;
         m_pCallbackProcessFrame = nullptr;
+        m_pObj = nullptr;
         m_frameBufferCount = 0;
         m_pixelSizeBytes = 0;
         m_graphicsCaptureItem = nullptr;
@@ -134,7 +137,7 @@ void SimpleCapture::WorkerThreadStart()
             if (!videoFrame) break;
             if (m_pCallbackProcessFrame)
             {
-                if (!m_pCallbackProcessFrame(this, videoFrame))
+                if (!m_pCallbackProcessFrame(m_pObj, this, videoFrame))
                 {
                     continue;
                 }
@@ -144,7 +147,7 @@ void SimpleCapture::WorkerThreadStart()
         qDebug() << "m_pWorkerThread main loop end";
         if (m_pCallbackProcessFrame)
         {
-            m_pCallbackProcessFrame(this, nullptr);
+            m_pCallbackProcessFrame(m_pObj, this, nullptr);
         }
         qDebug() << "-m_pWorkerThread";
     });
@@ -219,7 +222,12 @@ void SimpleCapture::WorkerProcessFrame(Direct3D11CaptureFrame frame)
     {
         if (m_pCallbackProcessFrameBytes)
         {
-            m_pCallbackProcessFrameBytes(this, frameSurfaceDesc.Width, frameSurfaceDesc.Height, mappedResource.RowPitch, mappedResource.pData);
+            m_pCallbackProcessFrameBytes(m_pObj,
+                                         this,
+                                         frameSurfaceDesc.Width,
+                                         frameSurfaceDesc.Height,
+                                         mappedResource.RowPitch,
+                                         mappedResource.pData);
         }
         m_d3d11DeviceContext->Unmap(pTextureCopy, 0);
     }

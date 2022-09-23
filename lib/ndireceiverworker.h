@@ -18,27 +18,28 @@ class NdiReceiverWorker : public QObject
 {
     Q_OBJECT
 public:
-    explicit NdiReceiverWorker(QObject *parent = nullptr);
+    explicit NdiReceiverWorker(QObject* pParent = nullptr);
     ~NdiReceiverWorker();
 
     void setConnectionInfo(QString receiverName, QString connectionMetadata);
 
-    void addVideoSink(QVideoSink *videoSink);
-    void removeVideoSink(QVideoSink *videoSink);
-    QString getNdiSourceName();
-    void setNdiSourceName(QString cNdiSourceName);
+    void addVideoSink(QVideoSink* pVideoSink);
+    void removeVideoSink(QVideoSink* pVideoSink);
+    QString selectedSourceName();
+    void selectSource(QString sourceName);
 
     void muteAudio(bool bMute);
 
+    void sendMetadata(QString metadata);
+
 signals:
-    void ndiSourceConnected();
-    void ndiSourceDisconnected();
-    void audioLevelLeftChanged(int);
-    void audioLevelRightChanged(int);
+    void onMetadataReceived(QString metadata);
+    void onSourceConnected(QString sourceName);
+    void onSourceDisconnected(QString sourceName);
 
 public slots:
+    void run();
     void stop();
-    void process();
 
 private:
     bool          m_bReconnect;
@@ -47,11 +48,11 @@ private:
 
     QList<QVideoSink*> m_videoSinks;
 
-    bool m_bIsProcessing = false;
+    volatile bool m_bIsRunning;
 
-    QString       m_cNdiSourceName;
-    int           m_nAudioLevelLeft;
-    int           m_nAudioLevelRight;
+    QList<QString> m_listMetadatasToSend;
+
+    QString       m_selectedSourceName;
     volatile bool m_bMuteAudio;
     volatile bool m_bLowQuality;
     QString       m_cIDX;
@@ -59,11 +60,14 @@ private:
     float m_fAudioLevels[MAX_AUDIO_LEVELS];
 
     void init();
-    void setAudioLevelLeft(int level);
-    void setAudioLevelRight(int level);
-    void processVideo(NDIlib_video_frame_v2_t *pNdiVideoFrame, QList<QVideoSink*> *videoSinks);
-    void processAudio(NDIlib_audio_frame_v2_t *pNdiAudioFrame, NDIlib_audio_frame_interleaved_32f_t *pA32f, size_t *pnAudioBufferSize, QIODevice *pAudioIoDevice);
-    void processMetaData(NDIlib_metadata_frame_t *pNdiMetadataFrame);
+    void processVideo(
+            NDIlib_video_frame_v2_t* pVideoFrameNdi,
+            QList<QVideoSink*>* pVideoSinks);
+    void processAudio(
+            NDIlib_audio_frame_v2_t* pNdiAudioFrame,
+            NDIlib_audio_frame_interleaved_32f_t* pA32f,
+            size_t* pnAudioBufferSize,
+            QIODevice* pAudioIoDevice);
 };
 
 #endif // NDIRECEIVERWORKER_H

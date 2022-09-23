@@ -5,14 +5,10 @@
 #include <QSystemTrayIcon>
 #include <QtMultimediaWidgets/QVideoWidget>
 
-#include "SimpleCapture.h"
 #include "Win32MonitorEnumeration.h"
 
 #include "ndireceiver.h"
-
-using namespace winrt;
-using namespace winrt::Windows::Graphics::Capture;
-using namespace winrt::Windows::UI::Composition;
+#include "ndisender.h"
 
 #define NUM_CAPTURE_FRAME_BUFFERS 2
 
@@ -21,7 +17,7 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    MainWindow(QWidget *parent = nullptr);
+    MainWindow(QWidget* parent = nullptr);
     ~MainWindow();
 
     std::vector<Monitor> getMonitors();
@@ -29,43 +25,37 @@ public:
     void captureStop();
 
 private:
-    QAction *actionFullScreenToggle;
-    QAction *actionCaptureToggle;
-    QAction *actionExit;
-    QAction *actionRestore;
+    QAction* m_pActionFullScreen;
+    QAction* m_pActionRestore;
+    QAction* m_pActionExit;
+    QMenu* m_pMenuMonitors;
+    QMenu* m_pTrayIconMenu;
+    QSystemTrayIcon* m_pTrayIcon;
     void createActions();
-
-    QMenu *trayIconMenu;
-    QSystemTrayIcon *trayIcon;
     void createTrayIcon();
 
-    void updateActionCaptureToggle();
-
 protected:
-    void closeEvent(QCloseEvent *event) override;
-    void showEvent(QShowEvent *event) override;
-    void hideEvent(QHideEvent *event) override;
+    void closeEvent(QCloseEvent* event) override;
+    void showEvent(QShowEvent* event) override;
+    void hideEvent(QHideEvent* event) override;
 
 protected:
 #ifndef QT_NO_CONTEXTMENU
-    void contextMenuEvent(QContextMenuEvent *event) override;
+    void contextMenuEvent(QContextMenuEvent* event) override;
 #endif // QT_NO_CONTEXTMENU
-
-private:
-    void addNdiSources(QMenu *menu);
-
-private slots:
-    void onActionNdiSourceSelected();
-    void onActionFullScreenToggle();
-    void onActionCaptureToggle();
-    void onActionExit();
-    void onActionRestoreWindow();
-
 private slots:
     void onTrayIconActivated(QSystemTrayIcon::ActivationReason reason);
+private:
+    void trayIconMenuUpdate();
+    void menuUpdateNdiSources(QMenu* menu);
+    void menuUpdateMonitors(QMenu* menu);
 
 private slots:
-    void onMonitorSelected(int index);
+    void onActionNdiSourceTriggered();
+    void onActionMonitorTriggered();
+    void onActionFullScreenTriggered();
+    void onActionRestoreWindowTriggered();
+    void onActionExitTriggered();
 
 private:
     void setFullScreen(bool fullScreen);
@@ -78,15 +68,14 @@ private:
     void ndiReceiverStart();
     void ndiReceiverStop();
 private slots:
-    void onNdiRecieverConnected();
-    void onNdiRecieverDisconnected();
+    void onNdiReceiverMetadataReceived(QString metadata);
+    void onNdiReceiverSourceConnected(QString sourceName);
+    void onNdiReceiverSourceDisconnected(QString sourceName);
 
 private:
-    Windows::System::DispatcherQueueController m_dispatcherQueueController;
-    Windows::System::DispatcherQueue m_dispatcherQueue;
-    atomic<SimpleCapture*> m_pSimpleCapture;
-    atomic<NDIlib_send_instance_t> m_pNdiSend;
-    uint64_t m_frameCount;
-    size_t m_frameSizeBytes;
-    uint8_t *m_pNdiSendBuffers[NUM_CAPTURE_FRAME_BUFFERS];
+    QString m_selectedMonitorName;
+    NdiSender m_ndiSender;
+private slots:
+    void onNdiSenderMetadataReceived(QString metadata);
+    void onNdiSenderReceiverCountChanged(int receiverCount);
 };

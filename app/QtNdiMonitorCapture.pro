@@ -17,6 +17,7 @@ HEADERS += \
     MainWindow.h \
     ../lib/ndireceiver.h \
     ../lib/ndireceiverworker.h \
+    ../lib/ndisender.h \
     ../lib/ndiwrapper.h \
     ../support/capture.interop.h \
     ../support/composition.interop.h \
@@ -31,6 +32,7 @@ SOURCES += \
     MainWindow.cpp \
     ../lib/ndireceiver.cpp \
     ../lib/ndireceiverworker.cpp \
+    ../lib/ndisender.cpp \
     ../lib/ndiwrapper.cpp \
     ../support/SimpleCapture.cpp \
     ../support/Win32MonitorEnumeration.cpp

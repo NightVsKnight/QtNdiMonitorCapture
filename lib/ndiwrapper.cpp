@@ -2,6 +2,7 @@
 
 #include <QDebug>
 
+
 #ifdef _WIN32
 #ifdef _WIN64
 #pragma comment(lib, "Processing.NDI.Lib.Advanced.x64.lib")
@@ -61,7 +62,7 @@ QString NdiWrapper::ndiFourCCToString(NDIlib_FourCC_video_type_e ndiFourCC)
     return s + s.asprintf(" (0x%08X)", ndiFourCC);
 }
 
-QVideoFrameFormat::PixelFormat NdiWrapper::ndiPixelFormatToPixelFormat(enum NDIlib_FourCC_video_type_e ndiFourCC)
+QVideoFrameFormat::PixelFormat NdiWrapper::ndiPixelFormatToQtPixelFormat(NDIlib_FourCC_video_type_e ndiFourCC)
 {
     switch(ndiFourCC)
     {
@@ -105,56 +106,59 @@ bool NdiWrapper::isNdiInitialized()
 
 bool NdiWrapper::ndiInitialize()
 {
-    if (isNdiInitialized()) return true;
+    if (!isNdiInitialized())
+    {
+        auto initialized = NDIlib_initialize();
+        Q_ASSERT(initialized);
 
-    auto initialized = NDIlib_initialize();
-    Q_ASSERT(initialized);
+        const NDIlib_find_create_t NDI_find_create_desc = { true, NULL, NULL };
+        m_pNDI_find = NDIlib_find_create_v2(&NDI_find_create_desc);
+        Q_ASSERT(m_pNDI_find != nullptr);
 
-    const NDIlib_find_create_t NDI_find_create_desc = { true, NULL, NULL };
-    m_pNDI_find = NDIlib_find_create_v2(&NDI_find_create_desc);
-    Q_ASSERT(m_pNDI_find != nullptr);
-
+    }
     return isNdiInitialized();
 }
 
 void NdiWrapper::ndiDestroy()
 {
-    if (!isNdiInitialized()) return;
+    if (isNdiInitialized())
+    {
+        NDIlib_find_destroy(m_pNDI_find);
+        m_pNDI_find = nullptr;
 
-    NDIlib_find_destroy(m_pNDI_find);
-    m_pNDI_find = nullptr;
-
-    NDIlib_destroy();
+        NDIlib_destroy();
+    }
 }
 
 QMap<QString, NDIlib_source_t> NdiWrapper::ndiFindSources(bool log)
 {
-    QMap<QString, NDIlib_source_t> _map;
-    if (!isNdiInitialized()) goto exit;
+    QMap<QString, NDIlib_source_t> sources;
+    if (isNdiInitialized())
     {
         if (log)
         {
             qDebug() << "finding...";
         }
         uint32_t num_sources = 0;
-        const NDIlib_source_t* p_sources = NDIlib_find_get_current_sources(m_pNDI_find, &num_sources);
-        if (num_sources) {
+        auto pSources = NDIlib_find_get_current_sources(m_pNDI_find, &num_sources);
+        if (num_sources)
+        {
             if (log)
             {
                 qDebug() << "processing" << num_sources << "NDI sources";
             }
-            for (uint32_t i = 0; i < num_sources; ++i) {
-                NDIlib_source_t p_source = p_sources[i];
-                QString cNdiName = QString::fromUtf8(p_source.p_ndi_name);
-                //qDebug() << "processing source" << i << cNdiName;
-                _map.insert(cNdiName, p_source);
+            for (uint32_t i = 0; i < num_sources; ++i)
+            {
+                auto pSource = pSources[i];
+                auto sourceName = QString::fromUtf8(pSource.p_ndi_name);
+                //qDebug() << "source" << i << sourceName;
+                sources.insert(sourceName, pSource);
             }
         }
         if (log)
         {
-            qDebug() << "found" << _map.size() << "NDI sources";
+            qDebug() << "found" << sources.size() << "NDI sources";
         }
     }
-exit:
-    return _map;
+    return sources;
 }
