@@ -1,4 +1,9 @@
 
 *.user
 
-build-QtNdiMonitorCapture-*/
+build*/
+
+app/build*/
+app/installer/packages/stream.NightVsKnight.QtNdiMonitorCapture/data/
+app/installer/packages/stream.NightVsKnight.QtNdiMonitorCapture/meta/LICENSE.md
+app/installer/QtNdiMonitorCaptureInstaller.exe

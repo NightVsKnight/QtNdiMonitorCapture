@@ -1,0 +1,71 @@
+
+#
+# Should be loosly based on:
+# https://github.com/obsproject/obs-studio/blob/master/.github/workflows/main.yml
+#
+
+name: CI
+on:
+  push:
+    paths-ignore: ['**.md']
+    branches: [ "main" ]
+  pull_request:
+    paths-ignore: ['**.md']
+    branches: [ "main" ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  #
+  # Should be loosly based on:
+  # https://github.com/obsproject/obs-studio/blob/master/.github/workflows/main.yml#L284 +/- a few lines
+  #
+  windows_build:
+    name: 'Windows'
+    if: always()
+    runs-on: windows-2019
+    steps:
+      - name: 'Checkout code to $GITHUB_WORKSPACE'
+        uses: actions/checkout@v3
+
+      - name: 'Install Qt6'
+        uses: jurplel/install-qt-action@v3.0.0
+        with:
+          version: 6.3.2
+          arch: win64_msvc2019_64
+          modules: 'qtmultimedia'
+          tools: 'tools_ifw'
+          setup-python: false
+
+      - name: 'Install Qt JOM'
+        working-directory: ${{ env.Qt6_DIR }}
+        shell: cmd
+        run: |
+          mkdir ..\..\Tools\QtCreator\bin\
+          pushd ..\..\Tools\QtCreator\bin\
+          curl -s -L -o jom.zip http://download.qt.io/official_releases/jom/jom.zip
+          7z x jom.zip -ojom
+          del jom.zip
+          popd
+
+      - name: 'Build & Package'
+        id: buildAndPackage
+        shell: pwsh
+        run: |
+          & CI\windows-build.ps1 "CONFIG+=package"
+
+      - name: 'Upload Artifact'
+        uses: actions/upload-artifact@v3
+        with:
+          name: QtNdiMonitorCaptureInstallerExe
+          path: app\installer\QtNdiMonitorCaptureInstaller.exe
+
+      - name: 'Upload Release'
+        if: startsWith(github.event.ref, 'refs/tags/')
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: QtNdiMonitorCaptureInstallerExe
+          tag: ${{ github.ref }}
+          overwrite: true

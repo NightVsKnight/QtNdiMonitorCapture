@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Installer>
+    <Name>QtNdiMonitorCapture</Name>
+    <Version>0.0.1</Version>
+    <Title>QtNdiMonitorCapture Installer</Title>
+    <Publisher>NightVsKnight</Publisher>
+    <StartMenuDir>QtNdiMonitorCapture</StartMenuDir>
+    <TargetDir>@ApplicationsDir@/QtNdiMonitorCapture</TargetDir>
+    <AllowSpaceInPath>true</AllowSpaceInPath>
+    <RunProgram>@TargetDir@/QtNdiMonitorCapture.exe</RunProgram>
+</Installer>

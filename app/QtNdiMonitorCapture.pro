@@ -47,24 +47,72 @@ CONFIG += embed_translations
 
 QMAKE_CXXFLAGS += /Zc:twoPhase-
 
-INCLUDEPATH += "$$(NDI_Advanced_SDK_DIR)/Include/"
+INCLUDEPATH += "../ndi/inc/"
 
 win32 {
     LIBS += -lwindowsapp
 
-    LIBS += -L"$$(NDI_Advanced_SDK_DIR)/Lib/x64/"
-    LIBS += -lProcessing.NDI.Lib.Advanced.x64
-    NDI_DLL = "$$(NDI_Advanced_SDK_DIR)/Bin/x64/Processing.NDI.Lib.Advanced.x64.dll"
+    NDI_LIB = "$$PWD/../ndi/lib/Processing.NDI.Lib.Advanced.x64"
+    LIBS += -l$$NDI_LIB
+    #message(LIBS: ($$LIBS))
 
-    message(NDI_DLL: ($$NDI_DLL))
-    copydata.commands = $(COPY_FILE) \"$$shell_path($$NDI_DLL)\" \"$$shell_path($$OUT_PWD)\"
-    first.depends = $(first) copydata
-    export(first.depends)
-    export(copydata.commands)
-    QMAKE_EXTRA_TARGETS += first copydata
+    NDI_DLL = "$$PWD/../ndi/bin/Processing.NDI.Lib.Advanced.x64.dll"
+    #message(NDI_DLL: ($$NDI_DLL))
+}
+
+CONFIG(package) {
+    CONFIG(debug, debug|release) {
+        OUT_PWD_CONFIG = $$OUT_PWD/debug
+    } else {
+        OUT_PWD_CONFIG = $$OUT_PWD/release
+    }
+
+    TARGET_FULL_NAME = $${TARGET}
+    win32: TARGET_FULL_NAME = $${TARGET_FULL_NAME}.exe
+
+    INSTALLER_DIR = $$PWD/installer
+    INSTALLER_CONFIG_DIR = $$INSTALLER_DIR/config
+    INSTALLER_PACKAGES_DIR = $$INSTALLER_DIR/packages
+    INSTALLER_PACKAGES_APP_DIR = $$INSTALLER_PACKAGES_DIR/stream.NightVsKnight.$$TARGET
+    INSTALLER_PACKAGES_APP_DATA_DIR = $$INSTALLER_PACKAGES_APP_DIR/data
+    INSTALLER_PACKAGES_APP_META_DIR = $$INSTALLER_PACKAGES_APP_DIR/meta
+
+    # Why were these removed in ~Qt5?
+    win32:QMAKE_DEL_DIR = rmdir /s /q
+    win32:QMAKE_MKDIR = mkdir
+    win32:QMAKE_COPY_FILE = copy /y
+
+    exists($$shell_path($$INSTALLER_PACKAGES_APP_DATA_DIR)) {
+        COMMANDS += "$$QMAKE_DEL_DIR \"$$shell_path($$INSTALLER_PACKAGES_APP_DATA_DIR)\""
+    }
+    COMMANDS += "$$QMAKE_MKDIR \"$$shell_path($$INSTALLER_PACKAGES_APP_DATA_DIR)\""
+    !exists($$shell_path($$INSTALLER_PACKAGES_APP_META_DIR)) {
+        COMMANDS += "$$QMAKE_MKDIR \"$$shell_path($$INSTALLER_PACKAGES_APP_META_DIR)\""
+    }
+    COMMANDS += "$$QMAKE_COPY_FILE \"$$shell_path($$OUT_PWD_CONFIG/$$TARGET_FULL_NAME)\" \"$$shell_path($$INSTALLER_PACKAGES_APP_DATA_DIR)\""
+    win32 {
+        COMMANDS += "$$QMAKE_COPY_FILE \"$$shell_path($$PWD/../ndi/bin/*.*)\" \"$$shell_path($$INSTALLER_PACKAGES_APP_DATA_DIR)\""
+    }
+    COMMANDS += "$$QMAKE_COPY_FILE \"$$shell_path($$PWD/../LICENSE.md)\" \"$$shell_path($$INSTALLER_PACKAGES_APP_META_DIR)\""
+    win32 {
+        COMMANDS += "\"$$shell_path($$[QT_INSTALL_PREFIX]/bin/windeployqt.exe)\" --compiler-runtime \"$$shell_path($$INSTALLER_PACKAGES_APP_DATA_DIR/$$TARGET_FULL_NAME)\""
+    }
+
+    QT_IFW = $$shell_path($$[QT_INSTALL_PREFIX]/../../Tools/QtInstallerFramework/4.4)
+    INSTALLER_TARGET_FULL_NAME = $${TARGET}Installer
+    win32: INSTALLER_TARGET_FULL_NAME = $${INSTALLER_TARGET_FULL_NAME}.exe
+    INSTALLER_PATH = $$INSTALLER_DIR/$$INSTALLER_TARGET_FULL_NAME
+    win32 {
+        COMMANDS += "\"$$shell_path($$QT_IFW/bin/binarycreator.exe)\" --offline-only -t \"$$shell_path($$QT_IFW/bin/installerbase.exe)\" -c \"$$shell_path($$INSTALLER_CONFIG_DIR/config.xml)\" -p \"$$shell_path($$INSTALLER_PACKAGES_DIR)\" \"$$shell_path($$INSTALLER_PATH)\""
+    }
+
+    QMAKE_POST_LINK = "cd"
+    for(COMMAND,COMMANDS) {
+        QMAKE_POST_LINK += && $$COMMAND
+    }
 }
 
 # Default rules for deployment.
-qnx: target.path = /tmp/$${TARGET}/bin
-else: unix:!android: target.path = /opt/$${TARGET}/bin
-!isEmpty(target.path): INSTALLS += target
+#qnx: target.path = /tmp/$${TARGET}/bin
+#else: unix:!android: target.path = /opt/$${TARGET}/bin
+#!isEmpty(target.path): INSTALLS += target

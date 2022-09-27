@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package>
+    <DisplayName>QtNdiMonitorCapture</DisplayName>
+    <Description>This will install QtNdiMonitorCapture on your computer.</Description>
+    <Version>0.0.1-1</Version>
+    <ReleaseDate>2022-09-27</ReleaseDate>
+    <Licenses>
+        <License name="MIT License" file="LICENSE.md" />
+    </Licenses>
+    <Default>true</Default>
+    <Script>installscript.qs</Script>
+</Package>
