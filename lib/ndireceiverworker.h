@@ -9,7 +9,7 @@
 #include <QVideoFrame>
 #include <QVideoSink>
 
-#include "Processing.NDI.Advanced.h"
+#include "Processing.NDI.Lib.h"
 
 #define MAX_AUDIO_LEVELS 16
 #define AUDIO_LEVEL_MIN -60
@@ -64,6 +64,7 @@ private:
             NDIlib_video_frame_v2_t* pVideoFrameNdi,
             QList<QVideoSink*>* pVideoSinks);
     void processAudio(
+            const NDIlib_v5* pNdi,
             NDIlib_audio_frame_v2_t* pNdiAudioFrame,
             NDIlib_audio_frame_interleaved_32f_t* pA32f,
             size_t* pnAudioBufferSize,

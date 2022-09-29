@@ -7,15 +7,6 @@
 #include "ndiwrapper.h"
 
 
-#ifdef _WIN32
-#ifdef _WIN64
-#pragma comment(lib, "Processing.NDI.Lib.Advanced.x64.lib")
-#else // _WIN64
-#pragma comment(lib, "Processing.NDI.Lib.Advanced.x86.lib")
-#endif // _WIN64
-#endif
-
-
 NdiReceiverWorker::NdiReceiverWorker(QObject* pParent)
     : QObject(pParent)
 {
@@ -139,6 +130,8 @@ void NdiReceiverWorker::run()
     NDIlib_recv_instance_t      pNdiRecv = nullptr;
     NDIlib_framesync_instance_t pNdiFrameSync = nullptr;
 
+    auto pNdi = NdiWrapper::ndiGet();
+
     QString metadataSend;
 
     bool isConnected = false;
@@ -174,7 +167,7 @@ void NdiReceiverWorker::run()
             setAudioLevelRight(AUDIO_LEVEL_MIN);
             */
 
-            auto ndiSources = NdiWrapper::get().ndiFindSources(false);
+            auto ndiSources = NdiWrapper::ndiFindSources();
             auto ndiList = ndiSources.values();
             if (!ndiList.size())
             {
@@ -222,7 +215,7 @@ void NdiReceiverWorker::run()
 
             if (pNdiFrameSync != nullptr)
             {
-                NDIlib_framesync_destroy(pNdiFrameSync);
+                pNdi->framesync_destroy(pNdiFrameSync);
                 pNdiFrameSync = nullptr;
             }
 
@@ -238,7 +231,7 @@ void NdiReceiverWorker::run()
                     pAudioIoDevice = nullptr;
                 }
 
-                NDIlib_recv_destroy(pNdiRecv);
+                pNdi->recv_destroy(pNdiRecv);
                 pNdiRecv = nullptr;
             }
 
@@ -257,39 +250,39 @@ void NdiReceiverWorker::run()
                 qDebug().nospace() << "NDI_recv_create_desc.bandwidth=" << recv_desc.bandwidth;
             }
 
-            qDebug() << "NDIlib_recv_create_v3";
-            pNdiRecv = NDIlib_recv_create_v3(&recv_desc);
+            qDebug() << "pNdi->recv_create_v3";
+            pNdiRecv = pNdi->recv_create_v3(&recv_desc);
             if (pNdiRecv == nullptr)
             {
-                qDebug() << "NDIlib_recv_create_v3 failed; should probably throw an exception here...";
+                qDebug() << "pNdi->recv_create_v3 failed; should probably throw an exception here...";
                 break;
             }
 
             nVTimestamp = 0;
             nATimestamp = 0;
 
-            qDebug() << "NDIlib_framesync_create";
-            pNdiFrameSync = NDIlib_framesync_create(pNdiRecv);
+            qDebug() << "pNdi->framesync_create";
+            pNdiFrameSync = pNdi->framesync_create(pNdiRecv);
             if (pNdiFrameSync == nullptr)
             {
-                qDebug() << "NDIlib_framesync_create failed; should probably throw an exception here...";
+                qDebug() << "pNdi->framesync_create failed; should probably throw an exception here...";
                 break;
             }
 
-            NDIlib_recv_clear_connection_metadata(pNdiRecv);
+            pNdi->recv_clear_connection_metadata(pNdiRecv);
 
             NDIlib_metadata_frame_t enable_hw_accel;
             enable_hw_accel.p_data = (char*)"<ndi_video_codec type=\"hardware\"/>";
-            qDebug() << "NDIlib_recv_send_metadata enable_hw_accel" << enable_hw_accel.p_data;
-            NDIlib_recv_send_metadata(pNdiRecv, &enable_hw_accel);
+            qDebug() << "pNdi->recv_send_metadata enable_hw_accel" << enable_hw_accel.p_data;
+            pNdi->recv_send_metadata(pNdiRecv, &enable_hw_accel);
 
             if (!m_connectionMetadata.isEmpty())
             {
                 NDIlib_metadata_frame_t connection_metadata;
                 auto utf8 = m_connectionMetadata.toUtf8();
                 connection_metadata.p_data = (char*)utf8.constData();
-                qDebug() << "NDIlib_recv_add_connection_metadata connection_metadata" << connection_metadata.p_data;
-                NDIlib_recv_add_connection_metadata(pNdiRecv, &connection_metadata);
+                qDebug() << "pNdi->recv_add_connection_metadata connection_metadata" << connection_metadata.p_data;
+                pNdi->recv_add_connection_metadata(pNdiRecv, &connection_metadata);
             }
 
             //cfg->setRecStatus(1);
@@ -323,7 +316,7 @@ void NdiReceiverWorker::run()
             //if ()
         }
 
-        if (NDIlib_recv_get_no_connections(pNdiRecv) == 0)
+        if (pNdi->recv_get_no_connections(pNdiRecv) == 0)
         {
             if (isConnected)
             {
@@ -350,8 +343,8 @@ void NdiReceiverWorker::run()
         // VIDEO
         //
         video_frame = {};
-        //qDebug() << "NDIlib_framesync_capture_video";
-        NDIlib_framesync_capture_video(pNdiFrameSync, &video_frame, NDIlib_frame_format_type_progressive);
+        //qDebug() << "pNdi->framesync_capture_video";
+        pNdi->framesync_capture_video(pNdiFrameSync, &video_frame, NDIlib_frame_format_type_progressive);
         //qDebug() << "video_frame.p_data=" << video_frame.p_data;
         if (video_frame.p_data && (video_frame.timestamp > nVTimestamp))
         {
@@ -359,39 +352,39 @@ void NdiReceiverWorker::run()
             nVTimestamp = video_frame.timestamp;
             processVideo(&video_frame, &m_videoSinks);
         }
-        NDIlib_framesync_free_video(pNdiFrameSync, &video_frame);
+        pNdi->framesync_free_video(pNdiFrameSync, &video_frame);
 
         //
         // AUDIO
         //
         audio_frame = {};
-        //qDebug() << "NDIlib_framesync_capture_audio";
-        NDIlib_framesync_capture_audio(pNdiFrameSync, &audio_frame, audioFormat.sampleRate(), audioFormat.channelCount(), 1024);
+        //qDebug() << "pNdi->framesync_capture_audio";
+        pNdi->framesync_capture_audio(pNdiFrameSync, &audio_frame, audioFormat.sampleRate(), audioFormat.channelCount(), 1024);
         //qDebug() << "audio_frame.p_data=" << audio_frame.p_data;
         if (audio_frame.p_data && (audio_frame.timestamp > nATimestamp))
         {
             //qDebug() << "a";//udio_frame";
             nATimestamp = audio_frame.timestamp;
-            processAudio(&audio_frame, &a32f, &nAudioBufferSize, pAudioIoDevice);
+            processAudio(pNdi, &audio_frame, &a32f, &nAudioBufferSize, pAudioIoDevice);
         }
-        NDIlib_framesync_free_audio(pNdiFrameSync, &audio_frame);
+        pNdi->framesync_free_audio(pNdiFrameSync, &audio_frame);
 
         //
         // METADATA RECV
         //
-        switch(NDIlib_recv_capture_v2(pNdiRecv, nullptr, nullptr, &metadata_frame, 0))
+        switch(pNdi->recv_capture_v2(pNdiRecv, nullptr, nullptr, &metadata_frame, 0))
         {
         case NDIlib_frame_type_e::NDIlib_frame_type_metadata:
         {
             //qDebug() << "m";//"etadata_frame";
             auto metadata = QString::fromUtf8(metadata_frame.p_data);
-            NDIlib_recv_free_metadata(pNdiRecv, &metadata_frame);
-            qDebug() << "NDIlib_recv_capture_v2 NDIlib_frame_type_metadata" << metadata;
+            pNdi->recv_free_metadata(pNdiRecv, &metadata_frame);
+            qDebug() << "pNdi->recv_capture_v2 NDIlib_frame_type_metadata" << metadata;
             emit onMetadataReceived(metadata);
             break;
         }
         case NDIlib_frame_type_e::NDIlib_frame_type_status_change:
-            qDebug() << "NDIlib_recv_capture_v2 NDIlib_frame_type_status_change";
+            qDebug() << "pNdi->recv_capture_v2 NDIlib_frame_type_status_change";
             break;
         default:
             // ignore
@@ -407,8 +400,8 @@ void NdiReceiverWorker::run()
             NDIlib_metadata_frame_t metadata_frame;
             auto utf8 = metadataSend.toUtf8();
             metadata_frame.p_data = (char*)utf8.constData();
-            qDebug() << "NDIlib_recv_send_metadata" << metadataSend;
-            NDIlib_recv_send_metadata(pNdiRecv, &metadata_frame);
+            qDebug() << "pNdi->recv_send_metadata" << metadataSend;
+            pNdi->recv_send_metadata(pNdiRecv, &metadata_frame);
         }
 
         // TODO: More accurate sleep that subtracts the duration of this loop
@@ -423,13 +416,13 @@ void NdiReceiverWorker::run()
 
     if (pNdiFrameSync)
     {
-        NDIlib_framesync_destroy(pNdiFrameSync);
+        pNdi->framesync_destroy(pNdiFrameSync);
         pNdiFrameSync = nullptr;
     }
 
     if (pNdiRecv)
     {
-        NDIlib_recv_destroy(pNdiRecv);
+        pNdi->recv_destroy(pNdiRecv);
         pNdiRecv = nullptr;
     }
 
@@ -539,6 +532,7 @@ void NdiReceiverWorker::processVideo(
 }
 
 void NdiReceiverWorker::processAudio(
+        const NDIlib_v5* pNdi,
         NDIlib_audio_frame_v2_t* pAudioFrameNdi,
         NDIlib_audio_frame_interleaved_32f_t* pA32f,
         size_t* pnAudioBufferSize,
@@ -574,7 +568,7 @@ void NdiReceiverWorker::processAudio(
         pA32f->p_data = new float[nThisAudioBufferSize];
     }
 
-    NDIlib_util_audio_to_interleaved_32f_v2(pAudioFrameNdi, pA32f);
+    pNdi->util_audio_to_interleaved_32f_v2(pAudioFrameNdi, pA32f);
 
     size_t nWritten = 0;
     do

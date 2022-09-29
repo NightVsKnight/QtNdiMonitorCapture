@@ -51,13 +51,6 @@ INCLUDEPATH += "../ndi/inc/"
 
 win32 {
     LIBS += -lwindowsapp
-
-    NDI_LIB = "$$PWD/../ndi/lib/Processing.NDI.Lib.Advanced.x64"
-    LIBS += -l$$NDI_LIB
-    #message(LIBS: ($$LIBS))
-
-    NDI_DLL = "$$PWD/../ndi/bin/Processing.NDI.Lib.Advanced.x64.dll"
-    #message(NDI_DLL: ($$NDI_DLL))
 }
 
 CONFIG(package) {
@@ -77,7 +70,7 @@ CONFIG(package) {
     INSTALLER_PACKAGES_APP_DATA_DIR = $$INSTALLER_PACKAGES_APP_DIR/data
     INSTALLER_PACKAGES_APP_META_DIR = $$INSTALLER_PACKAGES_APP_DIR/meta
 
-    # Why were these removed in ~Qt5?
+    # Why were these removed from Qt ~v5?
     win32:QMAKE_DEL_DIR = rmdir /s /q
     win32:QMAKE_MKDIR = mkdir
     win32:QMAKE_COPY_FILE = copy /y
@@ -90,9 +83,6 @@ CONFIG(package) {
         COMMANDS += "$$QMAKE_MKDIR \"$$shell_path($$INSTALLER_PACKAGES_APP_META_DIR)\""
     }
     COMMANDS += "$$QMAKE_COPY_FILE \"$$shell_path($$OUT_PWD_CONFIG/$$TARGET_FULL_NAME)\" \"$$shell_path($$INSTALLER_PACKAGES_APP_DATA_DIR)\""
-    win32 {
-        COMMANDS += "$$QMAKE_COPY_FILE \"$$shell_path($$PWD/../ndi/bin/*.*)\" \"$$shell_path($$INSTALLER_PACKAGES_APP_DATA_DIR)\""
-    }
     COMMANDS += "$$QMAKE_COPY_FILE \"$$shell_path($$PWD/../LICENSE.md)\" \"$$shell_path($$INSTALLER_PACKAGES_APP_META_DIR)\""
     win32 {
         COMMANDS += "\"$$shell_path($$[QT_INSTALL_PREFIX]/bin/windeployqt.exe)\" --compiler-runtime \"$$shell_path($$INSTALLER_PACKAGES_APP_DATA_DIR/$$TARGET_FULL_NAME)\""

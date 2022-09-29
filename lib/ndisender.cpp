@@ -1,13 +1,5 @@
 #include "ndisender.h"
-
-
-#ifdef _WIN32
-#ifdef _WIN64
-#pragma comment(lib, "Processing.NDI.Lib.Advanced.x64.lib")
-#else // _WIN64
-#pragma comment(lib, "Processing.NDI.Lib.Advanced.x86.lib")
-#endif // _WIN64
-#endif
+#include "ndiwrapper.h"
 
 
 NdiSender::NdiSender(QObject *parent)
@@ -30,6 +22,8 @@ NdiSender::~NdiSender()
 
 void NdiSender::init()
 {
+    m_pNdi = NdiWrapper::ndiGet();
+
     m_bReconnect = false;
     m_senderName = "QtNdiCaptureSender";
     m_connectionMetadata = "";
@@ -100,8 +94,8 @@ void NdiSender::stop()
     auto pNdiSend = m_pNdiSend.exchange(nullptr);
     if (pNdiSend)
     {
-        NDIlib_send_send_video_async_v2(pNdiSend, NULL);
-        NDIlib_send_destroy(pNdiSend);
+        m_pNdi->send_send_video_async_v2(pNdiSend, NULL);
+        m_pNdi->send_destroy(pNdiSend);
         pNdiSend = nullptr;
     }
     for (int i = 0; i < NUM_CAPTURE_FRAME_BUFFERS; ++i)
@@ -159,13 +153,13 @@ void NdiSender::start(HMONITOR hmonitor)
     NDIlib_send_create_t NDI_send_create_desc;
     auto utf8 = m_senderName.toUtf8();
     NDI_send_create_desc.p_ndi_name = utf8.constData();
-    m_pNdiSend = NDIlib_send_create(&NDI_send_create_desc);
+    m_pNdiSend = m_pNdi->send_create(&NDI_send_create_desc);
     Q_ASSERT(m_pNdiSend);
 
     NDIlib_metadata_frame_t connection_metadata;
     utf8 = m_connectionMetadata.toUtf8();
     connection_metadata.p_data = (char*)utf8.constData();
-    NDIlib_send_add_connection_metadata(m_pNdiSend, &connection_metadata);
+    m_pNdi->send_add_connection_metadata(m_pNdiSend, &connection_metadata);
 
     // TODO: Capture and send **Audio** in dedicated thread...
 
@@ -179,7 +173,7 @@ bool NdiSender::onFrameReceived(
     auto pNdiSend = m_pNdiSend.load();
     if (!pNdiSend) return false;
 
-    auto receiverCount = NDIlib_send_get_no_connections(pNdiSend, 0);
+    auto receiverCount = m_pNdi->send_get_no_connections(pNdiSend, 0);
     //qDebug() << "receiverCount" << receiverCount;
     if (receiverCount != m_receiverCount)
     {
@@ -199,18 +193,18 @@ bool NdiSender::onFrameReceived(
         // METADATA RECV
         //
         NDIlib_metadata_frame_t metadata_frame;
-        switch(NDIlib_send_capture(pNdiSend, &metadata_frame, 0))
+        switch(m_pNdi->send_capture(pNdiSend, &metadata_frame, 0))
         {
         case NDIlib_frame_type_e::NDIlib_frame_type_metadata:
         {
             auto metadata = QString::fromUtf8(metadata_frame.p_data);
-            NDIlib_send_free_metadata(pNdiSend, &metadata_frame);
-            qDebug() << "NDIlib_send_capture NDIlib_frame_type_metadata" << metadata;
+            m_pNdi->send_free_metadata(pNdiSend, &metadata_frame);
+            qDebug() << "pNdi->send_capture NDIlib_frame_type_metadata" << metadata;
             emit onMetadataReceived(metadata);
             break;
         }
         case NDIlib_frame_type_e::NDIlib_frame_type_status_change:
-            qDebug() << "NDIlib_send_capture NDIlib_frame_type_status_change";
+            qDebug() << "pNdi->send_capture NDIlib_frame_type_status_change";
             break;
         default:
             // ignore
@@ -220,7 +214,7 @@ bool NdiSender::onFrameReceived(
     else
     {
         // End of capture
-        NDIlib_send_send_video_async_v2(pNdiSend, NULL);
+        m_pNdi->send_send_video_async_v2(pNdiSend, NULL);
     }
 
     return true;
@@ -261,7 +255,7 @@ void NdiSender::onFrameReceivedBuffer(
     NDI_video_frame.line_stride_in_bytes = frameStrideBytes;
     NDI_video_frame.p_data = pOutBuffer;
 
-    NDIlib_send_send_video_async_v2(pNdiSend, &NDI_video_frame);
+    m_pNdi->send_send_video_async_v2(pNdiSend, &NDI_video_frame);
 }
 
 void NdiSender::sendMetadata(QString metadata)
@@ -271,6 +265,6 @@ void NdiSender::sendMetadata(QString metadata)
     NDIlib_metadata_frame_t metadata_frame;
     auto utf8 = metadata.toUtf8();
     metadata_frame.p_data = (char*)utf8.constData();
-    qDebug() << "NDIlib_send_send_metadata" << metadata;
-    NDIlib_send_send_metadata(pNdiSend, &metadata_frame);
+    qDebug() << "pNdi->send_send_metadata" << metadata;
+    m_pNdi->send_send_metadata(pNdiSend, &metadata_frame);
 }

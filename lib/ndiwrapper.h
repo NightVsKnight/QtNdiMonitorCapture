@@ -1,41 +1,28 @@
-#ifndef NDIWRAPPER_H
-#define NDIWRAPPER_H
+#pragma once
 
 #include <QObject>
 #include <QMap>
 #include <QVideoFrame>
 
-#include <Processing.NDI.Advanced.h>
+#include "Processing.NDI.Lib.h"
 
 class NdiWrapper : public QObject
 {
     Q_OBJECT
-public:
-    static NdiWrapper &get()
-    {
-        static NdiWrapper instance;
-        return instance;
-    }
-
 private:
-    NdiWrapper(QObject *parent = nullptr);
+    static NDIlib_v5* pNdi;
+    static NDIlib_find_instance_t pNdiFind;
+    NdiWrapper() : QObject(nullptr) {}
+    NdiWrapper(const NdiWrapper&) = delete;
+    NdiWrapper& operator= (const NdiWrapper&) = delete;
+
 public:
-    ~NdiWrapper();
+    static const NDIlib_v5* ndiGet();
+    static void ndiDestroy();
+
+    static QMap<QString, NDIlib_source_t> ndiFindSources(bool log = false);
 
     static QString ndiFrameTypeToString(NDIlib_frame_format_type_e ndiFrameType);
     static QString ndiFourCCToString(NDIlib_FourCC_video_type_e ndiFourCC);
     static QVideoFrameFormat::PixelFormat ndiPixelFormatToQtPixelFormat(NDIlib_FourCC_video_type_e ndiFourCC);
-
-    bool isNdiInitialized();
-    bool ndiInitialize();
-    void ndiDestroy();
-    QMap<QString, NDIlib_source_t> ndiFindSources(bool log = true);
-
-signals:
-    //...
-
-private:
-    NDIlib_find_instance_t m_pNDI_find = nullptr;
 };
-
-#endif // NDIWRAPPER_H

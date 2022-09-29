@@ -13,13 +13,6 @@
 
 #pragma comment(lib, "windowsapp")
 
-#ifdef _WIN32
-#ifdef _WIN64
-#pragma comment(lib, "Processing.NDI.Lib.Advanced.x64.lib")
-#else // _WIN64
-#pragma comment(lib, "Processing.NDI.Lib.Advanced.x86.lib")
-#endif // _WIN64
-#endif
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -168,7 +161,7 @@ void MainWindow::menuUpdateNdiSources(QMenu* menu)
     connect(action, &QAction::triggered, this, &MainWindow::onActionNdiSourceTriggered);
     menu->addAction(action);
 
-    auto ndiSources = NdiWrapper::get().ndiFindSources();
+    auto ndiSources = NdiWrapper::ndiFindSources();
     uint32_t i = 0;
     for (auto it = ndiSources.begin(); it != ndiSources.end(); ++it)
     {

@@ -2,7 +2,7 @@
 
 #include <QObject>
 
-#include <Processing.NDI.Advanced.h>
+#include "Processing.NDI.Lib.h"
 
 #include "SimpleCapture.h"
 
@@ -43,6 +43,7 @@ private:
     QString m_connectionMetadata;
     int     m_receiverCount;
 
+    const NDIlib_v5* m_pNdi;
     void init();
 
     static DirectXPixelFormat ndiPixelFormatToDxPixelFormat(NDIlib_FourCC_video_type_e pixelFormatNdi);

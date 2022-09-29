@@ -2,7 +2,7 @@
 
 **Shameless plug:** Seriously, one way you can really help out this project is to subscribe to NightVsKnight's [YouTube](https://www.youtube.com/channel/UCn8Ds6jeUzjxCPkMApg_koA) and/or [Twitch](https://www.twitch.tv/nightvsknight) channels. I will be showing off this project there from time to time, and getting new subscribers gives me a little morale boost to help me continue this project.
 
-Qt6 based app that simulates [`NDI Tools`'s](https://ndi.tv/tools/) `Studio Monitor` and `Screen Capture`.
+Qt6 based app that simulates [`NDI Tools`'](https://ndi.tv/tools/) `Studio Monitor` and `Screen Capture`.
 
 NDI's `Studio Monitor` is a NDI Receiver + Viewer.  
 NDI's `Screen Capture` is a Monitor Capture + NDI Sender.

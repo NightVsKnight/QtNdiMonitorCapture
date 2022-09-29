@@ -1,25 +1,13 @@
 #include "ndiwrapper.h"
 
 #include <QDebug>
+#include <QDir>
+#include <QFileInfo>
+#include <QLibrary>
 
 
-#ifdef _WIN32
-#ifdef _WIN64
-#pragma comment(lib, "Processing.NDI.Lib.Advanced.x64.lib")
-#else // _WIN64
-#pragma comment(lib, "Processing.NDI.Lib.Advanced.x86.lib")
-#endif // _WIN64
-#endif
-
-
-NdiWrapper::NdiWrapper(QObject *parent) : QObject(parent)
-{
-}
-
-NdiWrapper::~NdiWrapper()
-{
-    ndiDestroy();
-}
+NDIlib_v5* NdiWrapper::pNdi = nullptr;
+NDIlib_find_instance_t NdiWrapper::pNdiFind = nullptr;
 
 //
 //
@@ -30,16 +18,16 @@ QString NdiWrapper::ndiFrameTypeToString(NDIlib_frame_format_type_e ndiFrameType
     QString s;
     switch(ndiFrameType)
     {
-    case NDIlib_frame_format_type_progressive:
+    case NDIlib_frame_format_type_e::NDIlib_frame_format_type_progressive:
         s = "NDIlib_frame_format_type_progressive";
         break;
-    case NDIlib_frame_format_type_interleaved:
+    case NDIlib_frame_format_type_e::NDIlib_frame_format_type_interleaved:
         s = "NDIlib_frame_format_type_interleaved";
         break;
-    case NDIlib_frame_format_type_field_0:
+    case NDIlib_frame_format_type_e::NDIlib_frame_format_type_field_0:
         s = "NDIlib_frame_format_type_field_0";
         break;
-    case NDIlib_frame_format_type_field_1:
+    case NDIlib_frame_format_type_e::NDIlib_frame_format_type_field_1:
         s = "NDIlib_frame_format_type_field_1";
         break;
     default:
@@ -66,29 +54,29 @@ QVideoFrameFormat::PixelFormat NdiWrapper::ndiPixelFormatToQtPixelFormat(NDIlib_
 {
     switch(ndiFourCC)
     {
-    case NDIlib_FourCC_video_type_UYVY:
+    case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_UYVY:
         return QVideoFrameFormat::PixelFormat::Format_UYVY;
-    case NDIlib_FourCC_video_type_UYVA:
+    case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_UYVA:
         return QVideoFrameFormat::PixelFormat::Format_UYVY;
         break;
     // Result when requesting NDIlib_recv_color_format_best
-    case NDIlib_FourCC_video_type_P216:
+    case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_P216:
         return QVideoFrameFormat::PixelFormat::Format_P016;
-    //case NDIlib_FourCC_video_type_PA16:
+    //case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_PA16:
     //    return QVideoFrameFormat::PixelFormat::?;
-    case NDIlib_FourCC_video_type_YV12:
+    case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_YV12:
         return QVideoFrameFormat::PixelFormat::Format_YV12;
-    //case NDIlib_FourCC_video_type_I420:
+    //case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_I420:
     //    return QVideoFrameFormat::PixelFormat::?
-    case NDIlib_FourCC_video_type_NV12:
+    case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_NV12:
         return QVideoFrameFormat::PixelFormat::Format_NV12;
-    case NDIlib_FourCC_video_type_BGRA:
+    case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_BGRA:
         return QVideoFrameFormat::PixelFormat::Format_BGRA8888;
-    case NDIlib_FourCC_video_type_BGRX:
+    case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_BGRX:
         return QVideoFrameFormat::PixelFormat::Format_BGRX8888;
-    case NDIlib_FourCC_video_type_RGBA:
+    case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_RGBA:
         return QVideoFrameFormat::PixelFormat::Format_RGBA8888;
-    case NDIlib_FourCC_video_type_RGBX:
+    case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_RGBX:
         return QVideoFrameFormat::PixelFormat::Format_RGBX8888;
     default:
         return QVideoFrameFormat::PixelFormat::Format_Invalid;
@@ -99,49 +87,101 @@ QVideoFrameFormat::PixelFormat NdiWrapper::ndiPixelFormatToQtPixelFormat(NDIlib_
 //
 //
 
-bool NdiWrapper::isNdiInitialized()
+const NDIlib_v5* NdiWrapper::ndiGet()
 {
-    return m_pNDI_find != nullptr;
-}
+    if (pNdi) return pNdi;
 
-bool NdiWrapper::ndiInitialize()
-{
-    if (!isNdiInitialized())
+    QStringList libraryLocations;
+    auto redistFolder = qEnvironmentVariable(NDILIB_REDIST_FOLDER);
+    if (!redistFolder.isEmpty())
     {
-        auto initialized = NDIlib_initialize();
-        Q_ASSERT(initialized);
-
-        const NDIlib_find_create_t NDI_find_create_desc = { true, NULL, NULL };
-        m_pNDI_find = NDIlib_find_create_v2(&NDI_find_create_desc);
-        Q_ASSERT(m_pNDI_find != nullptr);
-
+        libraryLocations.push_back(redistFolder);
+#if defined(__linux__) || defined(__APPLE__)
+        libraryLocations.push_back("/usr/lib");
+        libraryLocations.push_back("/usr/lib64");
+        libraryLocations.push_back("/usr/lib/x86_64-linux-gnu");
+        libraryLocations.push_back("/usr/local/lib");
+        libraryLocations.push_back("/usr/local/lib64");
+#endif
     }
-    return isNdiInitialized();
+
+    foreach (auto path , libraryLocations)
+    {
+        QFileInfo libPath(QDir(path).absoluteFilePath(NDILIB_LIBRARY_NAME));
+        qDebug() << "Trying library path:" << libPath;
+        if (libPath.exists() && libPath.isFile())
+        {
+            auto functionPointer = QLibrary::resolve(libPath.absoluteFilePath(), "NDIlib_v5_load");
+            if (functionPointer)
+            {
+                qDebug() << "NDI5 library loaded:" << libPath;
+                pNdi = ((NDIlib_v5*(*)(void))functionPointer)();
+                break;
+            }
+            else
+            {
+                qDebug() << "NDIlib_v5_load not found in:" << libPath;
+            }
+        }
+    }
+    if (pNdi)
+    {
+        qDebug() << "NDI5 library loaded";
+        if (pNdi->initialize())
+        {
+            qDebug() << "NDI5 initialized";
+
+            NDIlib_find_create_t NDI_find_create_desc = { true, NULL, NULL };
+            pNdiFind = pNdi->find_create_v2(&NDI_find_create_desc);
+            if (pNdiFind)
+            {
+                qDebug() << "NDI5 global pNdi->find_create_v2(...) initialized";
+            }
+            else
+            {
+                qDebug() << "NDI5 global pNdi->find_create_v2(...) failed";
+            }
+        }
+        else
+        {
+            qDebug() << "NDI5 initialize() failed. Your CPU may not be supported. Plugin disabled.";
+            pNdi = nullptr;
+        }
+    }
+    else
+    {
+        qDebug() << "NDI5 library not found. Plugin disabled.";
+    }
+    return pNdi;
 }
 
 void NdiWrapper::ndiDestroy()
 {
-    if (isNdiInitialized())
+    if (pNdi)
     {
-        NDIlib_find_destroy(m_pNDI_find);
-        m_pNDI_find = nullptr;
+        if (pNdiFind)
+        {
+            pNdi->find_destroy(pNdiFind);
+            pNdiFind = nullptr;
+        }
 
-        NDIlib_destroy();
+        pNdi->destroy();
+        pNdi = nullptr;
     }
 }
 
 QMap<QString, NDIlib_source_t> NdiWrapper::ndiFindSources(bool log)
 {
     QMap<QString, NDIlib_source_t> sources;
-    if (isNdiInitialized())
+    if (pNdi && pNdiFind)
     {
         if (log)
         {
             qDebug() << "finding...";
         }
         uint32_t num_sources = 0;
-        auto pSources = NDIlib_find_get_current_sources(m_pNDI_find, &num_sources);
-        if (num_sources)
+        auto pSources = pNdi->find_get_current_sources(pNdiFind, &num_sources);
+        if (pSources && num_sources)
         {
             if (log)
             {

@@ -2,6 +2,7 @@
 #include <QCommandLineParser>
 #include <QDebug>
 #include <QLocale>
+#include <QMessageBox>
 #include <QTranslator>
 
 #include "MainWindow.h"
@@ -51,24 +52,44 @@ int main(int argc, char *argv[])
 #endif
 #endif
 
-    auto *ndi = &NdiWrapper::get();
+    int returnCode;
 
-    ndi->ndiInitialize();
-
-    MainWindow w;
-
-    if (appMode.compare("monitor", Qt::CaseInsensitive) == 0)
+    auto pNdi = NdiWrapper::ndiGet();
+    if (pNdi)
     {
-        w.show();
+        MainWindow w;
+
+        if (appMode.compare("monitor", Qt::CaseInsensitive) == 0)
+        {
+            w.show();
+        }
+        else if (appMode.compare("capture", Qt::CaseInsensitive) == 0)
+        {
+            w.captureStart();
+        }
+
+        returnCode = app.exec();
+
+        NdiWrapper::ndiDestroy();
     }
-    else if (appMode.compare("capture", Qt::CaseInsensitive) == 0)
+    else
     {
-        w.captureStart();
+        QMessageBox msgBox(nullptr);
+        msgBox.setWindowTitle(QObject::tr("NDI Runtime Not Found"));
+        msgBox.setTextFormat(Qt::RichText);
+        msgBox.setText(QString(QObject::tr("The NDI Runtime cannot be found.<br>\n"
+                               "<br>\n"
+                               "Please download and install the NDI Runtime from:<br>\n"
+                               "<a href=\"%1\">%1</a>.<br>\n"
+                               "<br>\n"
+                               "This application is useless without the NDI Runtime and will now close."))
+                       .arg(NDILIB_REDIST_URL));
+        msgBox.setIcon(QMessageBox::Icon::Critical);
+        msgBox.setStandardButtons(QMessageBox::Ok);
+        msgBox.exec();
+
+        returnCode = 1;
     }
-
-    auto returnCode = app.exec();
-
-    ndi->ndiDestroy();
 
     qDebug() << "returnCode" << returnCode;
     return returnCode;
