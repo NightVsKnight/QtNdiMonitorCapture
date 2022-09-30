@@ -31,24 +31,23 @@ int main(int argc, char *argv[])
         }
     }
 
-    // TODO: Just parse these directly in MainWindow?
-    auto appModeDefault = "monitor";
-
+    auto appModeDefault = App::AppMode::Monitor;
+    auto appModes =  App::getAppModes().join('|');
     QCommandLineParser parser;
-    QCommandLineOption optionMode(QStringList() << "m" << "mode", "\"monitor\"|\"capture\"", appModeDefault);
+    QCommandLineOption optionMode(QStringList() << "m" << "mode", appModes, "mode", App::toString(appModeDefault));
     parser.addOption(optionMode);
     parser.parse(app.arguments());
-    auto appMode = parser.value(optionMode);
-    if (appMode.isEmpty())
-    {
-        appMode = appModeDefault;
-    }
+    bool appModeOk;
+    auto appMode = App::toAppMode(parser.value(optionMode), &appModeOk);
 
+    //
+    // debugging hard codes
+    //
 #if 0
 #if 0
-    appMode = "capture"; // <- debugging hard code
+    appMode = App::AppMode::Capture;
 #else
-    appMode = "monitor"; // <- debugging hard code
+    appMode = App::AppMode::Monitor;
 #endif
 #endif
 
@@ -59,13 +58,14 @@ int main(int argc, char *argv[])
     {
         MainWindow w;
 
-        if (appMode.compare("monitor", Qt::CaseInsensitive) == 0)
+        switch(appMode)
         {
+        case App::AppMode::Monitor:
             w.show();
-        }
-        else if (appMode.compare("capture", Qt::CaseInsensitive) == 0)
-        {
+            break;
+        case App::AppMode::Capture:
             w.captureStart();
+            break;
         }
 
         returnCode = app.exec();

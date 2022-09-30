@@ -2,14 +2,14 @@
 
 **Shameless plug:** Seriously, one way you can really help out this project is to subscribe to NightVsKnight's [YouTube](https://www.youtube.com/channel/UCn8Ds6jeUzjxCPkMApg_koA) and/or [Twitch](https://www.twitch.tv/nightvsknight) channels. I will be showing off this project there from time to time, and getting new subscribers gives me a little morale boost to help me continue this project.
 
-Qt6 based app that simulates [`NDI Tools`'](https://ndi.tv/tools/) `Studio Monitor` and `Screen Capture`.
+Qt6 based app that simulates [`NDI Tools`](https://ndi.tv/tools/)' `Studio Monitor` and `Screen Capture`.
 
-NDI's `Studio Monitor` is a NDI Receiver + Viewer.  
-NDI's `Screen Capture` is a Monitor Capture + NDI Sender.
+* NDI's `Studio Monitor` is a NDI Receiver + Viewer.
+* NDI's `Screen Capture` is a Monitor Capture + NDI Sender.
 
 **`QtNdiMonitorCapture` does them both, so it can actually monitor its own output! :)**  
-(`Studio Monitor` can also send `NDI video output`, but if you were even able to have it view its own output then you would just be viewing a black screen.)  
-NOTE: It is interesting to run Monitor mode to view its own Monitor Capture screen in full-screen and see the result of the lossy data transfer. If P216 pixel format was used to capture->transmit->receive->render then I suspect that would be much less lossy (I wonder how close to lossless).
+(`Studio Monitor` can also send `NDI video output`, but even if you were able to have it view its own output then you would probably just be viewing a black screen.)  
+**NOTE:** *It is interesting to run Monitor mode to view its own Monitor Capture screen in full-screen and see the result of the lossy data transfer. If P216 pixel format was used to capture->transmit->receive->render then I suspect that would be much less lossy (I wonder how close to lossless).*
 
 ### Limitations
 * Currently only compiles and runs on Windows.  
@@ -17,7 +17,8 @@ NOTE: It is interesting to run Monitor mode to view its own Monitor Capture scre
 * Missing features (not exhaustive):
   * `Studio Monitor`
     * Recording: Very low priority to me.
-    * KVM: I tried to get this to work but the NDI KVM API keeps crashing whenever it is called. :/
+    * KVM: I tried to get this to work but the NDI KVM API keeps crashing whenever it is called. :/  
+      Another problem is that this requires NDI Advanced SDK, which may have an incompatible license.
     * Settings ...
       * Application ...
       * Audio ...
@@ -27,7 +28,8 @@ NOTE: It is interesting to run Monitor mode to view its own Monitor Capture scre
       * PTZ Settings ...: Very low priority to me.
   * `Screen Capture`
     * **Audio**: Again, sorry, but this initial `**Screen** Capture` proof of concept was focused literally on the screen/video only;  
-      Audio is [sort of] simpler to capture & send than video, but the UX is more complicated to select which of the multiple audio input and output devices to capture from.
+      Audio is [sort of] simpler to capture & send than video, but the UX is more complicated to select which of the multiple audio input and output devices to capture from.  
+      I will get to this eventually, but it is lower priority proof of concept for now.
     * Frame Rate ...
     * Capture Settings ...
     * Audio Source ...
@@ -76,7 +78,7 @@ Steps:
 3. Build and Run
 
 ## TODO
-Please help to whittle down this list!
+Please help to whittle down this list!:
 * Check for memory leaks and fix any found, especially when:
   1. Stopping and starting Capture.
   2. Stopping and starting when switching between different NDI Sources.
@@ -90,26 +92,28 @@ Please help to whittle down this list!
 * Confirm the app launches on all supported platforms.
 * Confirm `Monitor` mode works on all supported platforms.
 * **Implement `Capture` mode for all supported platforms.**
-* Support multiple monitors and selecting a specific one to capture from...  
-  ...or find a way to capture from more than one or all! :)
-* Add command-line to start the Capture.
+* Confirm multiple monitors works on all supported platforms.
+* Find a way to capture from more than one monitor...or all! :)
 * Add command-line to list NDI Sources and exit.
-* Add command-line to start viewing an NDI Source.
+* Add command-line to start viewing a specific NDI Source.
+* Add command-line to start capturing a specific Monitor (or Monitors).
 * Successfully port from QMake to CMake.
 * Add all of the [Limitations](#Limitations) of missing NDI `Studio Monitor` and `Screen Capture` features, including `NDI|HX3` support.
+  `NDI|HX` requires NDI Advanced SDK which may have an incompatible license. :/
 * Add support for sending to and receiving from NDI Groups.
 * Improve `Capture` performance, including adding `Game Capture` option [similar to OBS].
 * Improve `Monitor` performance.
 * Audit the code for all uses of pass-by-pointer (`*`) vs pass-by-reference (`&`) and decide the best one to use for each situation.  
   For performance tuning, this should usually be the fastest one.  
-  I have worked in the Managed world too long and gotten a little lazy.  
-  Some Qt classes I even pass without either `*` or `&`, and I suspect that results in a copy operation that probably isn't very efficient.
+  I have worked in the Managed world too long and was a little lazy writing the code. :/  
+  Some Qt classes I even pass without either `*` or `&`, and I suspect that results in a copy operation that probably isn't very efficient. :)
 
 NOTES:
-* I am using a double-buffering technique, but there is still some noticable sheering. :/
+* `Capture` does try to use a double-buffering technique, but there is still some noticable sheering. :/
 * `Monitor` code uses 100% Qt6 classes and **should** be very portable to any platform that Qt6 supports.  
-  It would be very nice to implement a cross-platform P216 pixel format! :)
+  It would be exceptionally nice to implement a cross-platform P216 pixel format! :)
 * `Capture` code is [currently] Windows specific and could use a cross-platform abstraction, probably using OBS Studio as inspiration.
+  https://github.com/obsproject/obs-studio/blob/master/libobs/obs-video.c
 
 ## References
 
@@ -117,6 +121,8 @@ Monitor Capture is based off of WinRT sample code from:
 * https://github.com/microsoft/Windows.UI.Composition-Win32-Samples/tree/master/cpp/ScreenCaptureforHWND
 * https://github.com/peilinok/Windows.UI.Composition-Win32-Samples/tree/master/cpp/ScreenCaptureforHWND
 * https://github.com/robmikh/Win32CaptureSample
+I've made a few tweaks of my own, but you can still compare them with:
+
 
 OBS Studio and OBS-NDI:
 * https://github.com/obsproject/obs-studio

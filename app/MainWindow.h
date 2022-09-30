@@ -12,6 +12,52 @@
 
 #define NUM_CAPTURE_FRAME_BUFFERS 2
 
+namespace App
+{
+    Q_NAMESPACE
+
+    enum class AppMode
+    {
+        Monitor,
+        Capture
+    };
+    Q_ENUM_NS(AppMode)
+
+    static QString toString(AppMode mode)
+    {
+        return QMetaEnum::fromType<AppMode>().valueToKey((int)mode);
+    }
+
+    static QString toCamelCase(const QString& s)
+    {
+        QStringList cased;
+        foreach(auto word, s.split(" ", Qt::SkipEmptyParts))
+        {
+            cased << word.at(0).toUpper() + word.mid(1);
+        }
+        return cased.join(' ');
+    }
+
+    static AppMode toAppMode(const QString& mode, bool* ok)
+    {
+        auto b = toCamelCase(mode).toUtf8();
+        return (AppMode)QMetaEnum::fromType<AppMode>().keyToValue(b.data(), ok);
+    }
+
+    static QStringList getAppModes()
+    {
+        QStringList modes;
+        auto meta = QMetaEnum::fromType<AppMode>();
+        auto keyCount = meta.keyCount();
+        for (int i = 0; i < keyCount; ++i)
+        {
+            auto key = meta.key(i);
+            modes.append(key);
+        }
+        return modes;
+    }
+}
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
