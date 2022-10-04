@@ -42,22 +42,22 @@ public slots:
     void stop();
 
 private:
-    bool          m_bReconnect;
-    QString       m_receiverName;
-    QString       m_connectionMetadata;
+    bool               m_bReconnect;
+    QString            m_receiverName;
+    QString            m_connectionMetadata;
 
     QList<QVideoSink*> m_videoSinks;
 
-    volatile bool m_bIsRunning;
+    volatile bool      m_bIsRunning;
 
-    QList<QString> m_listMetadatasToSend;
+    QStringList        m_listMetadatasToSend;
 
-    QString       m_selectedSourceName;
-    volatile bool m_bMuteAudio;
-    volatile bool m_bLowQuality;
-    QString       m_cIDX;
+    QString            m_selectedSourceName;
+    volatile bool      m_bMuteAudio;
+    volatile bool      m_bLowQuality;
+    QString            m_cIDX;
 
-    float m_fAudioLevels[MAX_AUDIO_LEVELS];
+    float              m_fAudioLevels[MAX_AUDIO_LEVELS];
 
     void init();
     void processVideo(

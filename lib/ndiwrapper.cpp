@@ -58,12 +58,11 @@ QVideoFrameFormat::PixelFormat NdiWrapper::ndiPixelFormatToQtPixelFormat(NDIlib_
         return QVideoFrameFormat::PixelFormat::Format_UYVY;
     case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_UYVA:
         return QVideoFrameFormat::PixelFormat::Format_UYVY;
-        break;
     // Result when requesting NDIlib_recv_color_format_best
     case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_P216:
         return QVideoFrameFormat::PixelFormat::Format_P016;
-    //case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_PA16:
-    //    return QVideoFrameFormat::PixelFormat::?;
+    case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_PA16:
+        return QVideoFrameFormat::PixelFormat::Format_P016;
     case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_YV12:
         return QVideoFrameFormat::PixelFormat::Format_YV12;
     //case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_I420:

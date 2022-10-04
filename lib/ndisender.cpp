@@ -112,6 +112,25 @@ void NdiSender::stop()
     qDebug() << "-stop()";
 }
 
+static winrt::Windows::System::DispatcherQueueController
+CreateDispatcherQueueController()
+{
+    DispatcherQueueOptions options
+    {
+        sizeof(DispatcherQueueOptions),
+        DQTYPE_THREAD_CURRENT,
+        DQTAT_COM_STA
+    };
+
+    winrt::Windows::System::DispatcherQueueController controller { nullptr };
+    winrt::check_hresult(CreateDispatcherQueueController(
+        options,
+        reinterpret_cast<
+            ABI::Windows::System::IDispatcherQueueController**>(
+            winrt::put_abi(controller))));
+    return controller;
+}
+
 void NdiSender::start(HMONITOR hmonitor)
 {
     qDebug() << "+start(...)";
@@ -122,16 +141,7 @@ void NdiSender::start(HMONITOR hmonitor)
 
     if (m_dispatcherQueueController == nullptr)
     {
-        auto hr = CreateDispatcherQueueController(
-                          {
-                              sizeof(DispatcherQueueOptions),
-                              DQTYPE_THREAD_CURRENT,
-                              DQTAT_COM_STA
-                          },
-                          reinterpret_cast<ABI::Windows::System::IDispatcherQueueController**>(put_abi(m_dispatcherQueueController)));
-        check_hresult(hr);
-        Q_ASSERT(hr == S_OK);
-
+        m_dispatcherQueueController = CreateDispatcherQueueController();
         m_dispatcherQueue = m_dispatcherQueueController.DispatcherQueue();
     }
 
@@ -168,7 +178,7 @@ void NdiSender::start(HMONITOR hmonitor)
 
 bool NdiSender::onFrameReceived(
         SimpleCapture*,
-        Direct3D11CaptureFrame frame)
+        Direct3D11CaptureFrame const& frame)
 {
     auto pNdiSend = m_pNdiSend.load();
     if (!pNdiSend) return false;

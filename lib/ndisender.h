@@ -6,9 +6,7 @@
 
 #include "SimpleCapture.h"
 
-using namespace winrt;
-using namespace winrt::Windows::Graphics::Capture;
-using namespace winrt::Windows::UI::Composition;
+using namespace winrt::Windows::System;
 
 //
 //
@@ -54,19 +52,19 @@ private:
     NDIlib_FourCC_video_type_e m_pixelFormatNdi;
     int                        m_pixelSizeBytes;
 
-    Windows::System::DispatcherQueueController m_dispatcherQueueController;
-    Windows::System::DispatcherQueue m_dispatcherQueue;
+    DispatcherQueueController m_dispatcherQueueController;
+    DispatcherQueue m_dispatcherQueue;
     atomic<SimpleCapture*> m_pSimpleCapture;
     atomic<NDIlib_send_instance_t> m_pNdiSend;
     uint64_t m_frameCount;
     size_t m_frameSizeBytes;
     uint8_t* m_pNdiSendBuffers[NUM_CAPTURE_FRAME_BUFFERS];
 
-    static bool onFrameReceived(void* pObj, SimpleCapture* pSender, Direct3D11CaptureFrame frame)
+    static bool onFrameReceived(void* pObj, SimpleCapture* pSender, Direct3D11CaptureFrame const& frame)
     {
         return ((NdiSender*)pObj)->onFrameReceived(pSender, frame);
     }
-    bool onFrameReceived(SimpleCapture* sender, Direct3D11CaptureFrame frame);
+    bool onFrameReceived(SimpleCapture* sender, Direct3D11CaptureFrame const& frame);
 
     static void onFrameReceivedBuffer(void* pObj, SimpleCapture* pSender, uint width, uint height, uint strideBytes, void* pFrameBuffer)
     {

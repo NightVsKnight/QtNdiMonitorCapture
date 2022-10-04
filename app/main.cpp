@@ -75,7 +75,9 @@ int main(int argc, char *argv[])
     else
     {
         QMessageBox msgBox(nullptr);
-        msgBox.setWindowTitle(QObject::tr("NDI Runtime Not Found"));
+        msgBox.setWindowTitle(QObject::tr("NDI Runtime Not Found - %1 %2")
+                              .arg(QApplication::applicationName())
+                              .arg(QApplication::applicationVersion()));
         msgBox.setTextFormat(Qt::RichText);
         msgBox.setText(QString(QObject::tr("The NDI Runtime cannot be found.<br>\n"
                                "<br>\n"

@@ -8,13 +8,12 @@ using namespace winrt;
 using namespace winrt::Windows::Graphics::DirectX;
 using namespace winrt::Windows::Graphics::DirectX::Direct3D11;
 using namespace winrt::Windows::Graphics::Capture;
-using namespace winrt::Windows::UI::Composition;
 using namespace winrt::Windows::Graphics;
 
 class SimpleCapture
 {
 public:
-    typedef bool (*CALLBACK_ON_FRAME)(void* pObj, SimpleCapture* pSender, Direct3D11CaptureFrame frame);
+    typedef bool (*CALLBACK_ON_FRAME)(void* pObj, SimpleCapture* pSender, Direct3D11CaptureFrame const& frame);
     typedef void (*CALLBACK_ON_FRAME_BUFFER)(void* pObj, SimpleCapture* pSender, uint width, uint height, uint strideBytes, void* pFrameBuffer);
 
     SimpleCapture();
@@ -41,7 +40,7 @@ private:
             winrt::Windows::Foundation::IInspectable const& args);
     void WorkerThreadStart();
     void WorkerThreadStop();
-    void WorkerProcessFrame(Direct3D11CaptureFrame frame);
+    void WorkerProcessFrame(Direct3D11CaptureFrame const& frame);
 
 private:
     GraphicsCaptureItem m_graphicsCaptureItem;
@@ -53,11 +52,13 @@ private:
     CALLBACK_ON_FRAME_BUFFER m_pCallbackProcessFrameBytes;
 
     SizeInt32 m_frameSize;
+    com_ptr<ID3D11Texture2D> m_frameTexture;
 
     IDirect3DDevice m_d3dDevice;
     com_ptr<ID3D11Device> m_d3d11Device;
     com_ptr<ID3D11DeviceContext> m_d3d11DeviceContext;
     Direct3D11CaptureFramePool m_captureFramePool;
+    Direct3D11CaptureFramePool::FrameArrived_revoker m_frameArrivedRevoker;
     GraphicsCaptureSession m_graphicsCaptureSession;
 
     atomic<bool> m_closed;
