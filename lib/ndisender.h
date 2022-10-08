@@ -52,8 +52,6 @@ private:
     NDIlib_FourCC_video_type_e m_pixelFormatNdi;
     int                        m_pixelSizeBytes;
 
-    DispatcherQueueController m_dispatcherQueueController;
-    DispatcherQueue m_dispatcherQueue;
     atomic<SimpleCapture*> m_pSimpleCapture;
     atomic<NDIlib_send_instance_t> m_pNdiSend;
     uint64_t m_frameCount;
@@ -66,9 +64,9 @@ private:
     }
     bool onFrameReceived(SimpleCapture* sender, Direct3D11CaptureFrame const& frame);
 
-    static void onFrameReceivedBuffer(void* pObj, SimpleCapture* pSender, uint width, uint height, uint strideBytes, void* pFrameBuffer)
+    static void onFrameReceivedBuffer(void* pObj, SimpleCapture* pSender, int width, int height, int strideBytes, void* pFrameBuffer)
     {
         ((NdiSender*)pObj)->onFrameReceivedBuffer(pSender, width, height, strideBytes, pFrameBuffer);
     }
-    void onFrameReceivedBuffer(SimpleCapture* pSender, uint frameWidth, uint frameHeight, uint frameStrideBytes, void* pFrameBuffer);
+    void onFrameReceivedBuffer(SimpleCapture* pSender, int frameWidth, int frameHeight, int frameStrideBytes, void* pFrameBuffer);
 };

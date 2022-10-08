@@ -1,7 +1,6 @@
 #pragma once
 
 #include "pch.h"
-#include "SafeQueue.h"
 
 using namespace std;
 using namespace winrt;
@@ -14,7 +13,7 @@ class SimpleCapture
 {
 public:
     typedef bool (*CALLBACK_ON_FRAME)(void* pObj, SimpleCapture* pSender, Direct3D11CaptureFrame const& frame);
-    typedef void (*CALLBACK_ON_FRAME_BUFFER)(void* pObj, SimpleCapture* pSender, uint width, uint height, uint strideBytes, void* pFrameBuffer);
+    typedef void (*CALLBACK_ON_FRAME_BUFFER)(void* pObj, SimpleCapture* pSender, int width, int height, int strideBytes, void* pFrameBuffer);
 
     SimpleCapture();
     ~SimpleCapture();
@@ -28,7 +27,7 @@ public:
             GraphicsCaptureItem const& item,
             DirectXPixelFormat pixelFormat,
             size_t pixelSizeBytes,
-            uint frameBufferCount,
+            int frameBufferCount,
             void* pObj,
             CALLBACK_ON_FRAME callbackFrame,
             CALLBACK_ON_FRAME_BUFFER callbackFrameBytes);
@@ -46,7 +45,7 @@ private:
     GraphicsCaptureItem m_graphicsCaptureItem;
     DirectXPixelFormat m_pixelFormat;
     size_t m_pixelSizeBytes;
-    uint m_frameBufferCount;
+    int m_frameBufferCount;
     void* m_pObj;
     CALLBACK_ON_FRAME m_pCallbackProcessFrame;
     CALLBACK_ON_FRAME_BUFFER m_pCallbackProcessFrameBytes;
@@ -61,8 +60,7 @@ private:
     Direct3D11CaptureFramePool::FrameArrived_revoker m_frameArrivedRevoker;
     GraphicsCaptureSession m_graphicsCaptureSession;
 
-    atomic<bool> m_closed;
+    bool m_isCapturing;
 
-    thread *m_pWorkerThread;
-    SafeQueue<Direct3D11CaptureFrame> m_queueVideoFrames;
+    CRITICAL_SECTION m_lock;
 };

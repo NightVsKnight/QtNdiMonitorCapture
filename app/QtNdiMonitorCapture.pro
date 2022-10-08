@@ -23,7 +23,6 @@ HEADERS += \
     ../lib/support/composition.interop.h \
     ../lib/support/d3dHelpers.h \
     ../lib/support/direct3d11.interop.h \
-    ../lib/support/SafeQueue.h \
     ../lib/support/SimpleCapture.h \
     ../lib/support/Win32MonitorEnumeration.h
 

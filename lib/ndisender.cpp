@@ -1,11 +1,11 @@
 #include "ndisender.h"
 #include "ndiwrapper.h"
 
+#include <QDebug>
+
 
 NdiSender::NdiSender(QObject *parent)
     : QObject{parent}
-    , m_dispatcherQueueController{nullptr}
-    , m_dispatcherQueue{nullptr}
     , m_pSimpleCapture{nullptr}
     , m_pNdiSend{nullptr}
     , m_frameCount{0}
@@ -112,25 +112,6 @@ void NdiSender::stop()
     qDebug() << "-stop()";
 }
 
-static winrt::Windows::System::DispatcherQueueController
-CreateDispatcherQueueController()
-{
-    DispatcherQueueOptions options
-    {
-        sizeof(DispatcherQueueOptions),
-        DQTYPE_THREAD_CURRENT,
-        DQTAT_COM_STA
-    };
-
-    winrt::Windows::System::DispatcherQueueController controller { nullptr };
-    winrt::check_hresult(CreateDispatcherQueueController(
-        options,
-        reinterpret_cast<
-            ABI::Windows::System::IDispatcherQueueController**>(
-            winrt::put_abi(controller))));
-    return controller;
-}
-
 void NdiSender::start(HMONITOR hmonitor)
 {
     qDebug() << "+start(...)";
@@ -139,26 +120,13 @@ void NdiSender::start(HMONITOR hmonitor)
 
     if (hmonitor == 0) return;
 
-    if (m_dispatcherQueueController == nullptr)
-    {
-        m_dispatcherQueueController = CreateDispatcherQueueController();
-        m_dispatcherQueue = m_dispatcherQueueController.DispatcherQueue();
-    }
+    auto item = CreateCaptureItemForMonitor(hmonitor);
 
-    // Enqueue our capture work on the dispatcher
-    auto success = m_dispatcherQueue.TryEnqueue(Windows::System::DispatcherQueuePriority::High,
-    [this, hmonitor]()
-    {
-        auto item = CreateCaptureItemForMonitor(hmonitor);
-
-        m_pSimpleCapture = new SimpleCapture();
-        (*m_pSimpleCapture).StartCapture(item, m_pixelFormatDx, m_pixelSizeBytes, NUM_CAPTURE_FRAME_BUFFERS,
-             this,
-             static_cast<SimpleCapture::CALLBACK_ON_FRAME>(NdiSender::onFrameReceived),
-             static_cast<SimpleCapture::CALLBACK_ON_FRAME_BUFFER>(NdiSender::onFrameReceivedBuffer));
-    });
-    WINRT_VERIFY(success);
-    Q_ASSERT(success);
+    m_pSimpleCapture = new SimpleCapture();
+    (*m_pSimpleCapture).StartCapture(item, m_pixelFormatDx, m_pixelSizeBytes, NUM_CAPTURE_FRAME_BUFFERS,
+         this,
+         static_cast<SimpleCapture::CALLBACK_ON_FRAME>(NdiSender::onFrameReceived),
+         static_cast<SimpleCapture::CALLBACK_ON_FRAME_BUFFER>(NdiSender::onFrameReceivedBuffer));
 
     NDIlib_send_create_t NDI_send_create_desc;
     auto utf8 = m_senderName.toUtf8();
@@ -232,9 +200,9 @@ bool NdiSender::onFrameReceived(
 
 void NdiSender::onFrameReceivedBuffer(
         SimpleCapture*,
-        uint frameWidth,
-        uint frameHeight,
-        uint frameStrideBytes,
+        int frameWidth,
+        int frameHeight,
+        int frameStrideBytes,
         void* pFrameBuffer)
 {
     auto pNdiSend = m_pNdiSend.load();
