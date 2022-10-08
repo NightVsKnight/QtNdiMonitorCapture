@@ -7,3 +7,12 @@ app/build*/
 app/installer/packages/stream.NightVsKnight.QtNdiMonitorCapture/data/
 app/installer/packages/stream.NightVsKnight.QtNdiMonitorCapture/meta/LICENSE.md
 app/installer/QtNdiMonitorCaptureInstaller.exe
+
+app/.qmake.stash
+app/.vs/QtNdiMonitorCapture/v16/
+app/debug/
+app/release/
+app/QtNdiMonitorCapture.sln
+app/QtNdiMonitorCapture.vcxproj
+app/QtNdiMonitorCapture.vcxproj.filters
+lib/support/pch.h.cpp

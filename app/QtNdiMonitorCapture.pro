@@ -9,9 +9,9 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 INCLUDEPATH += ../lib/
-INCLUDEPATH += ../support/
+INCLUDEPATH += ../lib/support/
 
-PRECOMPILED_HEADER = ../support/pch.h
+PRECOMPILED_HEADER = ../lib/support/pch.h
 
 HEADERS += \
     MainWindow.h \
@@ -19,13 +19,13 @@ HEADERS += \
     ../lib/ndireceiverworker.h \
     ../lib/ndisender.h \
     ../lib/ndiwrapper.h \
-    ../support/capture.interop.h \
-    ../support/composition.interop.h \
-    ../support/d3dHelpers.h \
-    ../support/direct3d11.interop.h \
-    ../support/SafeQueue.h \
-    ../support/SimpleCapture.h \
-    ../support/Win32MonitorEnumeration.h
+    ../lib/support/capture.interop.h \
+    ../lib/support/composition.interop.h \
+    ../lib/support/d3dHelpers.h \
+    ../lib/support/direct3d11.interop.h \
+    ../lib/support/SafeQueue.h \
+    ../lib/support/SimpleCapture.h \
+    ../lib/support/Win32MonitorEnumeration.h
 
 SOURCES += \
     main.cpp \
@@ -34,8 +34,8 @@ SOURCES += \
     ../lib/ndireceiverworker.cpp \
     ../lib/ndisender.cpp \
     ../lib/ndiwrapper.cpp \
-    ../support/SimpleCapture.cpp \
-    ../support/Win32MonitorEnumeration.cpp
+    ../lib/support/SimpleCapture.cpp \
+    ../lib/support/Win32MonitorEnumeration.cpp
 
 RESOURCES = resources.qrc
 
