@@ -38,27 +38,11 @@ void NdiReceiverWorker::init()
     qDebug() << "-init()";
 }
 
-void NdiReceiverWorker::setConnectionInfo(QString receiverName, QString connectionMetadata)
+void NdiReceiverWorker::setConnectionInfo(const QString& receiverName, const QString& connectionMetadata)
 {
     m_receiverName = receiverName;
     m_connectionMetadata = connectionMetadata;
     m_bReconnect = true;
-}
-
-void NdiReceiverWorker::addVideoSink(QVideoSink* pVideoSink)
-{
-    if (pVideoSink && !m_videoSinks.contains(pVideoSink))
-    {
-        m_videoSinks.append(pVideoSink);
-    }
-}
-
-void NdiReceiverWorker::removeVideoSink(QVideoSink* pVideoSink)
-{
-    if (pVideoSink)
-    {
-        m_videoSinks.removeAll(pVideoSink);
-    }
 }
 
 QString NdiReceiverWorker::selectedSourceName()
@@ -66,7 +50,7 @@ QString NdiReceiverWorker::selectedSourceName()
     return m_selectedSourceName;
 }
 
-void NdiReceiverWorker::selectSource(QString sourceName)
+void NdiReceiverWorker::selectSource(const QString& sourceName)
 {
     m_selectedSourceName = sourceName;
 }
@@ -76,7 +60,7 @@ void NdiReceiverWorker::muteAudio(bool bMute)
     m_bMuteAudio = bMute;
 }
 
-void NdiReceiverWorker::sendMetadata(QString metadata)
+void NdiReceiverWorker::sendMetadata(const QString& metadata)
 {
     if (!m_bIsRunning) return;
     m_listMetadatasToSend.append(metadata);
@@ -350,7 +334,7 @@ void NdiReceiverWorker::run()
         {
             //qDebug() << "v";//ideo_frame";
             nVTimestamp = video_frame.timestamp;
-            processVideo(&video_frame, &m_videoSinks);
+            processVideo(video_frame);
         }
         pNdi->framesync_free_video(pNdiFrameSync, &video_frame);
 
@@ -444,14 +428,12 @@ QString withCommas(int value)
     return QLocale(QLocale::English).toString(value);
 }
 
-void NdiReceiverWorker::processVideo(
-        NDIlib_video_frame_v2_t* pVideoFrameNdi,
-        QList<QVideoSink*>* pVideoSinks)
+void NdiReceiverWorker::processVideo(const NDIlib_video_frame_v2_t& pVideoFrameNdi)
 {
-    auto ndiWidth = pVideoFrameNdi->xres;
-    auto ndiHeight = pVideoFrameNdi->yres;
-    auto ndiLineStrideInBytes = pVideoFrameNdi->line_stride_in_bytes;
-    auto ndiPixelFormat = pVideoFrameNdi->FourCC;
+    auto ndiWidth = pVideoFrameNdi.xres;
+    auto ndiHeight = pVideoFrameNdi.yres;
+    auto ndiLineStrideInBytes = pVideoFrameNdi.line_stride_in_bytes;
+    auto ndiPixelFormat = pVideoFrameNdi.FourCC;
 #if defined(MY_VERBOSE_LOGGING)
     qDebug();
     qDebug() << "+processVideo(...)";
@@ -484,7 +466,7 @@ void NdiReceiverWorker::processVideo(
     }
 
     auto pDstY = videoFrame.bits(0);
-    auto pSrcY = pVideoFrameNdi->p_data;
+    auto pSrcY = pVideoFrameNdi.p_data;
     auto pDstUV = videoFrame.bits(1);
     auto pSrcUV = pSrcY + (ndiLineStrideInBytes * ndiHeight);
     for (int line = 0; line < ndiHeight; ++line)
@@ -521,10 +503,7 @@ void NdiReceiverWorker::processVideo(
 
     videoFrame.unmap();
 
-    foreach (auto pVideoSink, *pVideoSinks)
-    {
-        pVideoSink->setVideoFrame(videoFrame);
-    }
+    emit onVideoFrameReceived(videoFrame);
 
 #if defined(MY_VERBOSE_LOGGING)
     qDebug() << "-processVideo(...)";

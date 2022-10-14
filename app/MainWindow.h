@@ -107,15 +107,16 @@ private:
     void setFullScreen(bool fullScreen);
 
 private:
-    bool m_hasShownAtLeastOnce;
     QMediaPlayer m_mediaPlayer;
     QVideoWidget m_videoWidget;
+    QVideoSink* m_videoSink;
     NdiReceiver m_ndiReceiver;
     void ndiReceiverStart();
     void ndiReceiverStop();
 private slots:
-    void onNdiReceiverMetadataReceived(QString metadata);
     void onNdiReceiverSourceConnected(QString sourceName);
+    void onNdiReceiverMetadataReceived(QString metadata);
+    void onNdiReceiverVideoFrameReceived(const QVideoFrame& videoFrame);
     void onNdiReceiverSourceDisconnected(QString sourceName);
 
 private:

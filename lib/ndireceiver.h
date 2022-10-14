@@ -14,42 +14,20 @@ public:
     NdiReceiver(QObject *parent = nullptr);
     ~NdiReceiver();
 
-    void start(QVideoSink *videoSink = nullptr);
+    void start();
     void stop();
 
-    void setConnectionInfo(QString receiverName, QString connectionMetadata)
-    {
-        m_workerNdiReceiver.setConnectionInfo(receiverName, connectionMetadata);
-    }
-    void addVideoSink(QVideoSink *videoSink)
-    {
-        m_workerNdiReceiver.addVideoSink(videoSink);
-    }
-    void removeVideoSink(QVideoSink *videoSink)
-    {
-        m_workerNdiReceiver.removeVideoSink(videoSink);
-    }
-    QString selectedSourceName()
-    {
-        return m_workerNdiReceiver.selectedSourceName();
-    }
-    void selectSource(QString sourceName)
-    {
-        m_workerNdiReceiver.selectSource(sourceName);
-    }
-    void sendMetadata(QString metadata)
-    {
-        m_workerNdiReceiver.sendMetadata(metadata);
-    }
-    void muteAudio(bool bMute)
-    {
-        m_workerNdiReceiver.muteAudio(bMute);
-    }
+    void setConnectionInfo(const QString& receiverName, const QString& connectionMetadata);
+    QString selectedSourceName();
+    void selectSource(const QString& sourceName);
+    void sendMetadata(const QString& metadata);
+    void muteAudio(bool bMute);
 
 signals:
-    void onMetadataReceived(QString metadata);
-    void onSourceConnected(QString sourceName);
-    void onSourceDisconnected(QString sourceName);
+    void onSourceConnected(const QString& sourceName);
+    void onMetadataReceived(const QString& metadata);
+    void onVideoFrameReceived(const QVideoFrame& videoFrame);
+    void onSourceDisconnected(const QString& sourceName);
 
 private:
     NdiReceiverWorker m_workerNdiReceiver;

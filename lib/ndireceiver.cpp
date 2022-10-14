@@ -27,15 +27,15 @@ void NdiReceiver::init()
 
     connect(&m_workerNdiReceiver, &NdiReceiverWorker::onMetadataReceived, this, &NdiReceiver::onMetadataReceived);
     connect(&m_workerNdiReceiver, &NdiReceiverWorker::onSourceConnected, this, &NdiReceiver::onSourceConnected);
+    connect(&m_workerNdiReceiver, &NdiReceiverWorker::onVideoFrameReceived, this, &NdiReceiver::onVideoFrameReceived);
     connect(&m_workerNdiReceiver, &NdiReceiverWorker::onSourceDisconnected, this, &NdiReceiver::onSourceDisconnected);
 
     qDebug() << "-init()";
 }
 
-void NdiReceiver::start(QVideoSink *videoSink)
+void NdiReceiver::start()
 {
     qDebug() << "+start(...)";
-    m_workerNdiReceiver.addVideoSink(videoSink);
     m_threadNdiReceiver.start();
     qDebug() << "-start(...)";
 }
@@ -47,4 +47,29 @@ void NdiReceiver::stop()
     m_threadNdiReceiver.quit();
     m_threadNdiReceiver.wait();
     qDebug() << "-stop()";
+}
+
+void NdiReceiver::setConnectionInfo(const QString& receiverName, const QString& connectionMetadata)
+{
+    m_workerNdiReceiver.setConnectionInfo(receiverName, connectionMetadata);
+}
+
+QString NdiReceiver::selectedSourceName()
+{
+    return m_workerNdiReceiver.selectedSourceName();
+}
+
+void NdiReceiver::selectSource(const QString& sourceName)
+{
+    m_workerNdiReceiver.selectSource(sourceName);
+}
+
+void NdiReceiver::sendMetadata(const QString& metadata)
+{
+    m_workerNdiReceiver.sendMetadata(metadata);
+}
+
+void NdiReceiver::muteAudio(bool bMute)
+{
+    m_workerNdiReceiver.muteAudio(bMute);
 }

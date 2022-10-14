@@ -138,10 +138,10 @@ void SimpleCapture::Close()
         m_captureFramePool = nullptr;
     }
 
-    m_d3d11DeviceContext = nullptr;
-    m_d3d11Device = nullptr;
+    m_d3d11DeviceContext.detach();
+    m_d3d11Device.detach();
     m_d3dDevice = nullptr;
-    m_frameTexture = nullptr;
+    m_frameTexture.detach();
     m_frameSize = { 0, 0 };
     m_pCallbackProcessFrameBytes = nullptr;
     if (m_pCallbackProcessFrame)

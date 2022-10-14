@@ -21,21 +21,20 @@ public:
     explicit NdiReceiverWorker(QObject* pParent = nullptr);
     ~NdiReceiverWorker();
 
-    void setConnectionInfo(QString receiverName, QString connectionMetadata);
+    void setConnectionInfo(const QString& receiverName, const QString& connectionMetadata);
 
-    void addVideoSink(QVideoSink* pVideoSink);
-    void removeVideoSink(QVideoSink* pVideoSink);
     QString selectedSourceName();
-    void selectSource(QString sourceName);
+    void selectSource(const QString& sourceName);
 
     void muteAudio(bool bMute);
 
-    void sendMetadata(QString metadata);
+    void sendMetadata(const QString& metadata);
 
 signals:
-    void onMetadataReceived(QString metadata);
-    void onSourceConnected(QString sourceName);
-    void onSourceDisconnected(QString sourceName);
+    void onSourceConnected(const QString& sourceName);
+    void onMetadataReceived(const QString& metadata);
+    void onVideoFrameReceived(const QVideoFrame& videoFrame);
+    void onSourceDisconnected(const QString& sourceName);
 
 public slots:
     void run();
@@ -45,8 +44,6 @@ private:
     bool               m_bReconnect;
     QString            m_receiverName;
     QString            m_connectionMetadata;
-
-    QList<QVideoSink*> m_videoSinks;
 
     volatile bool      m_bIsRunning;
 
@@ -60,9 +57,7 @@ private:
     float              m_fAudioLevels[MAX_AUDIO_LEVELS];
 
     void init();
-    void processVideo(
-            NDIlib_video_frame_v2_t* pVideoFrameNdi,
-            QList<QVideoSink*>* pVideoSinks);
+    void processVideo(const NDIlib_video_frame_v2_t& pVideoFrameNdi);
     void processAudio(
             const NDIlib_v5* pNdi,
             NDIlib_audio_frame_v2_t* pNdiAudioFrame,

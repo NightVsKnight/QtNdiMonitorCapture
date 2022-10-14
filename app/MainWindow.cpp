@@ -16,7 +16,6 @@
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
-    , m_hasShownAtLeastOnce{false}
     , m_mediaPlayer(this)
     , m_videoWidget(this)
     , m_ndiReceiver(this)
@@ -29,6 +28,7 @@ MainWindow::MainWindow(QWidget* parent)
 
     resize(960, 540);
 
+    m_videoSink = m_videoWidget.videoSink();
     setCentralWidget(&m_videoWidget);
 
     createActions();
@@ -90,10 +90,10 @@ void MainWindow::closeEvent(QCloseEvent* event)
 void MainWindow::showEvent(QShowEvent*)
 {
     qDebug() << "showEvent(...)";
-    if (!m_hasShownAtLeastOnce)
+    bool isFirstShowing = m_mediaPlayer.source().isEmpty();
+    if (isFirstShowing)
     {
-        m_hasShownAtLeastOnce = true;
-        m_mediaPlayer.setVideoSink(m_videoWidget.videoSink());
+        m_mediaPlayer.setVideoSink(m_videoSink);
         m_mediaPlayer.setSource(QUrl("qrc:/Logos/NDI Loop.mp4"));
         m_mediaPlayer.setLoops(QMediaPlayer::Infinite);
     }
@@ -301,10 +301,11 @@ void MainWindow::ndiReceiverStart()
 {
     qDebug() << "+ndiReceiverStart()";
     ndiReceiverStop();
-    connect(&m_ndiReceiver, &NdiReceiver::onMetadataReceived, this, &MainWindow::onNdiReceiverMetadataReceived);
     connect(&m_ndiReceiver, &NdiReceiver::onSourceConnected, this, &MainWindow::onNdiReceiverSourceConnected);
+    connect(&m_ndiReceiver, &NdiReceiver::onMetadataReceived, this, &MainWindow::onNdiReceiverMetadataReceived);
+    connect(&m_ndiReceiver, &NdiReceiver::onVideoFrameReceived, this, &MainWindow::onNdiReceiverVideoFrameReceived);
     connect(&m_ndiReceiver, &NdiReceiver::onSourceDisconnected, this, &MainWindow::onNdiReceiverSourceDisconnected);
-    m_ndiReceiver.start(m_videoWidget.videoSink());
+    m_ndiReceiver.start();
     qDebug() << "-ndiReceiverStart()";
 }
 
@@ -321,6 +322,11 @@ void MainWindow::onNdiReceiverMetadataReceived(QString metadata)
     //...
 }
 
+void MainWindow::onNdiReceiverVideoFrameReceived(const QVideoFrame& videoFrame)
+{
+    m_videoSink->setVideoFrame(videoFrame);
+}
+
 void MainWindow::onNdiReceiverSourceDisconnected(QString sourceName)
 {
     qDebug() << "onNdiReceiverSourceDisconnected(" << sourceName << ")";
@@ -331,8 +337,9 @@ void MainWindow::onNdiReceiverSourceDisconnected(QString sourceName)
 void MainWindow::ndiReceiverStop()
 {
     qDebug() << "+ndiReceiverStop()";
-    disconnect(&m_ndiReceiver, &NdiReceiver::onMetadataReceived, this, &MainWindow::onNdiReceiverMetadataReceived);
     disconnect(&m_ndiReceiver, &NdiReceiver::onSourceConnected, this, &MainWindow::onNdiReceiverSourceConnected);
+    disconnect(&m_ndiReceiver, &NdiReceiver::onMetadataReceived, this, &MainWindow::onNdiReceiverMetadataReceived);
+    disconnect(&m_ndiReceiver, &NdiReceiver::onVideoFrameReceived, this, &MainWindow::onNdiReceiverVideoFrameReceived);
     disconnect(&m_ndiReceiver, &NdiReceiver::onSourceDisconnected, this, &MainWindow::onNdiReceiverSourceDisconnected);
     m_ndiReceiver.stop();
     qDebug() << "-ndiReceiverStop()";
