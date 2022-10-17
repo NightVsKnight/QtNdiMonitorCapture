@@ -31,7 +31,7 @@ namespace App
     static QString toCamelCase(const QString& s)
     {
         QStringList cased;
-        foreach(auto word, s.split(" ", Qt::SkipEmptyParts))
+        foreach (auto word, s.split(" ", Qt::SkipEmptyParts))
         {
             cased << word.at(0).toUpper() + word.mid(1);
         }

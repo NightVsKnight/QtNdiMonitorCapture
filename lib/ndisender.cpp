@@ -226,14 +226,14 @@ void NdiSender::onFrameReceivedBuffer(
     uint8_t* pOutBuffer = m_pNdiSendBuffers[m_frameCount++ % NUM_CAPTURE_FRAME_BUFFERS];
     memcpy(pOutBuffer, pFrameBuffer, thisFrameSizeBytes);
 
-    NDIlib_video_frame_v2_t NDI_video_frame;
-    NDI_video_frame.xres = frameWidth;
-    NDI_video_frame.yres = frameHeight;
-    NDI_video_frame.FourCC = m_pixelFormatNdi;
-    NDI_video_frame.line_stride_in_bytes = frameStrideBytes;
-    NDI_video_frame.p_data = pOutBuffer;
+    NDIlib_video_frame_v2_t video_frame;
+    video_frame.xres = frameWidth;
+    video_frame.yres = frameHeight;
+    video_frame.FourCC = m_pixelFormatNdi;
+    video_frame.line_stride_in_bytes = frameStrideBytes;
+    video_frame.p_data = pOutBuffer;
 
-    m_pNdi->send_send_video_async_v2(pNdiSend, &NDI_video_frame);
+    m_pNdi->send_send_video_async_v2(pNdiSend, &video_frame);
 }
 
 void NdiSender::sendMetadata(QString metadata)

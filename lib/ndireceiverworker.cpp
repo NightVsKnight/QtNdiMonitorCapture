@@ -6,7 +6,6 @@
 
 #include "ndiwrapper.h"
 
-
 NdiReceiverWorker::NdiReceiverWorker(QObject* pParent)
     : QObject(pParent)
 {

@@ -24,24 +24,26 @@ int main(int argc, char *argv[])
     QTranslator translator;
     auto uiLanguages = QLocale::system().uiLanguages();
     for (auto locale : uiLanguages) {
-        const QString baseName = "QtNdiMonitorCapture_" + QLocale(locale).name();
+        auto baseName = "QtNdiMonitorCapture_" + QLocale(locale).name();
         if (translator.load(":/i18n/" + baseName)) {
             app.installTranslator(&translator);
             break;
         }
     }
 
+    auto arguments = app.arguments();
+
     auto appModeDefault = App::AppMode::Monitor;
     auto appModes =  App::getAppModes().join('|');
     QCommandLineParser parser;
     QCommandLineOption optionMode(QStringList() << "m" << "mode", appModes, "mode", App::toString(appModeDefault));
     parser.addOption(optionMode);
-    parser.parse(app.arguments());
+    parser.parse(arguments);
     bool appModeOk;
     auto appMode = App::toAppMode(parser.value(optionMode), &appModeOk);
 
     //
-    // debugging hard codes
+    // hard codes to help debugging
     //
 #if 0
 #if 0

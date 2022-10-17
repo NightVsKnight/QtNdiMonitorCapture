@@ -104,7 +104,7 @@ const NDIlib_v5* NdiWrapper::ndiGet()
 #endif
     }
 
-    foreach (auto path , libraryLocations)
+    foreach (auto path, libraryLocations)
     {
         QFileInfo libPath(QDir(path).absoluteFilePath(NDILIB_LIBRARY_NAME));
         qDebug() << "Trying library path:" << libPath;

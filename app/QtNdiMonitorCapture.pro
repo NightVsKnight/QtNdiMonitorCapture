@@ -41,6 +41,9 @@ RESOURCES = resources.qrc
 TRANSLATIONS += \
     QtNdiMonitorCapture_en_US.ts
 
+DISTFILES += \
+    ../lib/support/readme.md
+
 CONFIG += lrelease
 CONFIG += embed_translations
 
@@ -96,7 +99,7 @@ CONFIG(package) {
     }
 
     QMAKE_POST_LINK = "cd"
-    for(COMMAND,COMMANDS) {
+    for (COMMAND,COMMANDS) {
         QMAKE_POST_LINK += && $$COMMAND
     }
 }
