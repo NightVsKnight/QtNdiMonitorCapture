@@ -206,6 +206,8 @@ void SimpleCapture::WorkerProcessFrame(Direct3D11CaptureFrame const& frame)
 
     if (!m_frameTexture)
     {
+        // First time; create the texture
+        m_frameSize = frameSize;
         D3D11_TEXTURE2D_DESC frameSurfaceDesc;
         frameSurface->GetDesc(&frameSurfaceDesc);
         frameSurfaceDesc.Usage = D3D11_USAGE_STAGING;//D3D11_USAGE_DEFAULT;//D3D11_USAGE_IMMUTABLE;//D3D11_USAGE_DYNAMIC;
@@ -219,13 +221,16 @@ void SimpleCapture::WorkerProcessFrame(Direct3D11CaptureFrame const& frame)
     }
     else
     {
+        // Not first time; re-create the texture if dimensions changed since last time
         if (m_frameSize.Width != frameSize.Width || m_frameSize.Height != frameSize.Height)
         {
             resized = true;
+            m_frameSize = frameSize;
+            m_frameTexture.detach();
             D3D11_TEXTURE2D_DESC frameSurfaceDesc;
             frameSurface->GetDesc(&frameSurfaceDesc);
-            frameSurfaceDesc.Width = frameSize.Width;
-            frameSurfaceDesc.Height = frameSize.Height;
+            frameSurfaceDesc.Width = m_frameSize.Width;
+            frameSurfaceDesc.Height = m_frameSize.Height;
             hr = m_d3d11Device->CreateTexture2D(&frameSurfaceDesc, nullptr, m_frameTexture.put());
         }
     }
@@ -254,7 +259,6 @@ void SimpleCapture::WorkerProcessFrame(Direct3D11CaptureFrame const& frame)
 
     if (resized)
     {
-        m_frameSize = frameSize;
         m_captureFramePool.Recreate(m_d3dDevice,
                                     m_pixelFormat,
                                     m_frameBufferCount,
