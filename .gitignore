@@ -15,4 +15,4 @@ app/release/
 app/QtNdiMonitorCapture.sln
 app/QtNdiMonitorCapture.vcxproj
 app/QtNdiMonitorCapture.vcxproj.filters
-lib/support/pch.h.cpp
+lib/support/simplecapture/pch.h.cpp

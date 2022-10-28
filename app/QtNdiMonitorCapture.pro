@@ -9,9 +9,9 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 INCLUDEPATH += ../lib/
-INCLUDEPATH += ../lib/support/
+INCLUDEPATH += ../lib/GraphicsCapture/
 
-PRECOMPILED_HEADER = ../lib/support/pch.h
+PRECOMPILED_HEADER = ../lib/GraphicsCapture/pch.h
 
 HEADERS += \
     MainWindow.h \
@@ -19,12 +19,12 @@ HEADERS += \
     ../lib/ndireceiverworker.h \
     ../lib/ndisender.h \
     ../lib/ndiwrapper.h \
-    ../lib/support/capture.interop.h \
-    ../lib/support/composition.interop.h \
-    ../lib/support/d3dHelpers.h \
-    ../lib/support/direct3d11.interop.h \
-    ../lib/support/SimpleCapture.h \
-    ../lib/support/Win32MonitorEnumeration.h
+    ../lib/GraphicsCapture/capture.interop.h \
+    ../lib/GraphicsCapture/composition.interop.h \
+    ../lib/GraphicsCapture/d3dHelpers.h \
+    ../lib/GraphicsCapture/direct3d11.interop.h \
+    ../lib/GraphicsCapture/SimpleCapture.h \
+    ../lib/GraphicsCapture/Win32MonitorEnumeration.h
 
 SOURCES += \
     main.cpp \
@@ -33,8 +33,8 @@ SOURCES += \
     ../lib/ndireceiverworker.cpp \
     ../lib/ndisender.cpp \
     ../lib/ndiwrapper.cpp \
-    ../lib/support/SimpleCapture.cpp \
-    ../lib/support/Win32MonitorEnumeration.cpp
+    ../lib/GraphicsCapture/SimpleCapture.cpp \
+    ../lib/GraphicsCapture/Win32MonitorEnumeration.cpp
 
 RESOURCES = resources.qrc
 
@@ -42,7 +42,8 @@ TRANSLATIONS += \
     QtNdiMonitorCapture_en_US.ts
 
 DISTFILES += \
-    ../lib/support/readme.md
+    ../.gitignore \
+    ../lib/GraphicsCapture/readme.md
 
 CONFIG += lrelease
 CONFIG += embed_translations
