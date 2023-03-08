@@ -91,16 +91,17 @@ CONFIG(package) {
         COMMANDS += "\"$$shell_path($$[QT_INSTALL_PREFIX]/bin/windeployqt.exe)\" --compiler-runtime \"$$shell_path($$INSTALLER_PACKAGES_APP_DATA_DIR/$$TARGET_FULL_NAME)\""
     }
 
-    QT_IFW = $$shell_path($$[QT_INSTALL_PREFIX]/../../Tools/QtInstallerFramework/4.4)
+    QT_IFW_DIR = $$shell_path($$[QT_INSTALL_PREFIX]/../../Tools/QtInstallerFramework/$$(QtIfwVersion))
     INSTALLER_TARGET_FULL_NAME = $${TARGET}Installer
     win32: INSTALLER_TARGET_FULL_NAME = $${INSTALLER_TARGET_FULL_NAME}.exe
     INSTALLER_PATH = $$INSTALLER_DIR/$$INSTALLER_TARGET_FULL_NAME
     win32 {
-        COMMANDS += "\"$$shell_path($$QT_IFW/bin/binarycreator.exe)\" --offline-only -t \"$$shell_path($$QT_IFW/bin/installerbase.exe)\" -c \"$$shell_path($$INSTALLER_CONFIG_DIR/config.xml)\" -p \"$$shell_path($$INSTALLER_PACKAGES_DIR)\" \"$$shell_path($$INSTALLER_PATH)\""
+        COMMANDS += "\"$$shell_path($$QT_IFW_DIR/bin/binarycreator.exe)\" --offline-only -t \"$$shell_path($$QT_IFW_DIR/bin/installerbase.exe)\" -c \"$$shell_path($$INSTALLER_CONFIG_DIR/config.xml)\" -p \"$$shell_path($$INSTALLER_PACKAGES_DIR)\" \"$$shell_path($$INSTALLER_PATH)\""
     }
 
     QMAKE_POST_LINK = "cd"
-    for (COMMAND,COMMANDS) {
+    for (COMMAND, COMMANDS) {
+        QMAKE_POST_LINK += && echo $$COMMAND
         QMAKE_POST_LINK += && $$COMMAND
     }
 }

@@ -67,15 +67,26 @@ More are planned.
 
 ## Build
 Requirements:
-* Currently only compiles and runs on Windows.
+* Currently only compiles and runs on Windows
+* Visual Studio 2019 Community installed
+* Qt6 installed with the following components:
+  * MSVC 2019 64-bit
+  * Qt Multimedia
+  * Qt Creator 9.0.2
+  * Qt Installer Framework 4.5
 * NDI Advanced SDK to be installed.  
   I could have just required the non-Advanced SDK, but I hope to one day add KVM support, which requires the Advanced SDK.
-* Qt6 installed.
 
-Steps:
+### Steps:
+
+#### Qt Creator 9.0.2 IDE
 1. Launch Qt Creator
 2. Open the QtNdiMonitorCapture.pro file
 3. Build and Run
+
+#### PowerShell 7.3.3 Command-Line
+1. `$env:Qt6_DIR = 'C:\Qt\6.4.2\msvc2019_64\'`
+2. `CI\windows-build.ps1 "CONFIG+=package"`
 
 ## TODO
 Please help to whittle down this list!:
