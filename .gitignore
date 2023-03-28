@@ -16,3 +16,8 @@ app/QtNdiMonitorCapture.sln
 app/QtNdiMonitorCapture.vcxproj
 app/QtNdiMonitorCapture.vcxproj.filters
 lib/support/simplecapture/pch.h.cpp
+lib/debug/
+lib/release/
+Makefile*
+.qtc_clangd
+.qmake.stash

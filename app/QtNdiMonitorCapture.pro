@@ -11,29 +11,22 @@ CONFIG += c++17
 INCLUDEPATH += ../lib/
 INCLUDEPATH += ../lib/GraphicsCapture/
 
-PRECOMPILED_HEADER = ../lib/GraphicsCapture/pch.h
+win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../lib/release/ -lQtNdi
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../lib/debug/ -lQtNdi
+else:unix: LIBS += -L$$OUT_PWD/../lib/ -lQtNdi
+
+DEPENDPATH +=   $$PWD/../lib
+                $$PWD/../lib/GraphicsCapture
+
+PRECOMPILED_HEADER =
 
 HEADERS += \
     MainWindow.h \
-    ../lib/ndireceiver.h \
-    ../lib/ndireceiverworker.h \
-    ../lib/ndisender.h \
-    ../lib/ndiwrapper.h \
-    ../lib/GraphicsCapture/capture.interop.h \
-    ../lib/GraphicsCapture/composition.interop.h \
-    ../lib/GraphicsCapture/d3dHelpers.h \
-    ../lib/GraphicsCapture/direct3d11.interop.h \
-    ../lib/GraphicsCapture/SimpleCapture.h \
     ../lib/GraphicsCapture/Win32MonitorEnumeration.h
 
 SOURCES += \
     main.cpp \
     MainWindow.cpp \
-    ../lib/ndireceiver.cpp \
-    ../lib/ndireceiverworker.cpp \
-    ../lib/ndisender.cpp \
-    ../lib/ndiwrapper.cpp \
-    ../lib/GraphicsCapture/SimpleCapture.cpp \
     ../lib/GraphicsCapture/Win32MonitorEnumeration.cpp
 
 RESOURCES = resources.qrc
@@ -42,8 +35,7 @@ TRANSLATIONS += \
     QtNdiMonitorCapture_en_US.ts
 
 DISTFILES += \
-    ../.gitignore \
-    ../lib/GraphicsCapture/readme.md
+    ../.gitignore
 
 CONFIG += lrelease
 CONFIG += embed_translations
