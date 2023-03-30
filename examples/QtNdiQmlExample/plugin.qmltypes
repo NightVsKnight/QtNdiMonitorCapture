@@ -1,0 +1,10 @@
+import QtQuickNdi
+
+Module {
+    Component {
+        name: "QtNdiItem"
+        prototype: "QQuickPaintedItem"
+        exports: ["QtQuickNdi/QtNdiItem 1.0"]
+        exportMetaObjectRevisions: [0]
+    }
+}
