@@ -18,6 +18,13 @@ app/QtNdiMonitorCapture.vcxproj.filters
 lib/support/simplecapture/pch.h.cpp
 lib/debug/
 lib/release/
+plugins/*/debug/
+plugins/*/release/
+examples/*/debug/
+examples/*/release/
 Makefile*
+debug_qmake_resources_qmlcache.qrc
+release_qmake_resources_qmlcache.qrc
+moc_.cpp.json
 .qtc_clangd
 .qmake.stash

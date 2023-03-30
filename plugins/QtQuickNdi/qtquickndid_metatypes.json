@@ -1,0 +1,223 @@
+[
+    {
+        "classes": [
+            {
+                "className": "QtNdiItem",
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "name": "ndiSource",
+                        "notify": "ndiSourceChanged",
+                        "read": "ndiSource",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false,
+                        "write": "setNdiSource"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "name": "videoOutput",
+                        "notify": "videoOutputChanged",
+                        "read": "videoOutput",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QObject*",
+                        "user": false,
+                        "write": "setVideoOutput"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "name": "active",
+                        "notify": "activeChanged",
+                        "read": "active",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "write": "setActive"
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "name": "mute",
+                        "notify": "muteChanged",
+                        "read": "mute",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false,
+                        "write": "setMute"
+                    }
+                ],
+                "qualifiedClassName": "QtNdiItem",
+                "signals": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "ndiSource",
+                                "type": "QString"
+                            }
+                        ],
+                        "name": "ndiSourceChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "videoOutput",
+                                "type": "QObject*"
+                            }
+                        ],
+                        "name": "videoOutputChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "active",
+                                "type": "bool"
+                            }
+                        ],
+                        "name": "activeChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "mute",
+                                "type": "bool"
+                            }
+                        ],
+                        "name": "muteChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "ndiSource",
+                                "type": "QString"
+                            }
+                        ],
+                        "name": "ndiSourceConnected",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "ndiSource",
+                                "type": "QString"
+                            }
+                        ],
+                        "name": "ndiSourceDisconnected",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "metadata",
+                                "type": "QString"
+                            }
+                        ],
+                        "name": "ndiSourceMetadataReceived",
+                        "returnType": "void"
+                    }
+                ],
+                "slots": [
+                    {
+                        "access": "private",
+                        "arguments": [
+                            {
+                                "name": "sourceName",
+                                "type": "QString"
+                            }
+                        ],
+                        "name": "onNdiReceiverSourceConnected",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "private",
+                        "arguments": [
+                            {
+                                "name": "metadata",
+                                "type": "QString"
+                            }
+                        ],
+                        "name": "onNdiReceiverMetadataReceived",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "private",
+                        "arguments": [
+                            {
+                                "name": "videoFrame",
+                                "type": "QVideoFrame"
+                            }
+                        ],
+                        "name": "onNdiReceiverVideoFrameReceived",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "private",
+                        "arguments": [
+                            {
+                                "name": "sourceName",
+                                "type": "QString"
+                            }
+                        ],
+                        "name": "onNdiReceiverSourceDisconnected",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qtndiitem.h",
+        "outputRevision": 68
+    },
+    {
+        "classes": [
+            {
+                "className": "QtQuickNdiPlugin",
+                "object": true,
+                "qualifiedClassName": "QtQuickNdiPlugin",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QQmlExtensionPlugin"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "qtquickndi_plugin.h",
+        "outputRevision": 68
+    }
+]
