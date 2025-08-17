@@ -42,7 +42,7 @@ QString NdiWrapper::ndiFrameTypeToString(NDIlib_frame_format_type_e ndiFrameType
  */
 QString NdiWrapper::ndiFourCCToString(NDIlib_FourCC_video_type_e ndiFourCC)
 {
-    QString s;
+    QString s("NDIlib_FourCC_video_type_");
     s += (char)(ndiFourCC >> 0 & 0x000000FF);
     s += (char)(ndiFourCC >> 8 & 0x000000FF);
     s += (char)(ndiFourCC >> 16 & 0x000000FF);
@@ -52,33 +52,38 @@ QString NdiWrapper::ndiFourCCToString(NDIlib_FourCC_video_type_e ndiFourCC)
 
 QVideoFrameFormat::PixelFormat NdiWrapper::ndiPixelFormatToQtPixelFormat(NDIlib_FourCC_video_type_e ndiFourCC)
 {
+    using PF = QVideoFrameFormat::PixelFormat;
     switch(ndiFourCC)
     {
-    case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_UYVY:
-        return QVideoFrameFormat::PixelFormat::Format_UYVY;
-    case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_UYVA:
-        return QVideoFrameFormat::PixelFormat::Format_UYVY;
+    case NDIlib_FourCC_video_type_UYVY: return PF::Format_UYVY;
+    case NDIlib_FourCC_video_type_UYVA: return PF::Format_UYVY;
     // Result when requesting NDIlib_recv_color_format_best
-    case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_P216:
-        return QVideoFrameFormat::PixelFormat::Format_P016;
-    case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_PA16:
-        return QVideoFrameFormat::PixelFormat::Format_P016;
-    case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_YV12:
-        return QVideoFrameFormat::PixelFormat::Format_YV12;
-    //case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_I420:
-    //    return QVideoFrameFormat::PixelFormat::?
-    case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_NV12:
-        return QVideoFrameFormat::PixelFormat::Format_NV12;
-    case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_BGRA:
-        return QVideoFrameFormat::PixelFormat::Format_BGRA8888;
-    case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_BGRX:
-        return QVideoFrameFormat::PixelFormat::Format_BGRX8888;
-    case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_RGBA:
-        return QVideoFrameFormat::PixelFormat::Format_RGBA8888;
-    case NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_RGBX:
-        return QVideoFrameFormat::PixelFormat::Format_RGBX8888;
-    default:
-        return QVideoFrameFormat::PixelFormat::Format_Invalid;
+    case NDIlib_FourCC_video_type_P216: return PF::Format_P016;
+    case NDIlib_FourCC_video_type_PA16: return PF::Format_P016;
+    case NDIlib_FourCC_video_type_YV12: return PF::Format_YV12;
+    //case NDIlib_FourCC_video_type_I420: return PF::?
+    case NDIlib_FourCC_video_type_NV12: return PF::Format_NV12;
+    case NDIlib_FourCC_video_type_BGRA: return PF::Format_BGRA8888;
+    case NDIlib_FourCC_video_type_BGRX: return PF::Format_BGRX8888;
+    case NDIlib_FourCC_video_type_RGBA: return PF::Format_RGBA8888;
+    case NDIlib_FourCC_video_type_RGBX: return PF::Format_RGBX8888;
+    default: return PF::Format_Invalid;
+    }
+}
+
+NDIlib_FourCC_video_type_e NdiWrapper::qtPixelFormatToNdiPixelFormat(QVideoFrameFormat::PixelFormat pixelFormat)
+{
+    using PF = QVideoFrameFormat::PixelFormat;
+    switch (pixelFormat) {
+    case PF::Format_ARGB8888: return NDIlib_FourCC_video_type_BGRA; // Qt: ARGB → mem order BGRA
+    case PF::Format_XRGB8888: return NDIlib_FourCC_type_BGRX;
+    case PF::Format_BGRA8888: return NDIlib_FourCC_type_BGRA;
+    case PF::Format_BGRX8888: return NDIlib_FourCC_type_BGRX;
+    case PF::Format_ABGR8888: return NDIlib_FourCC_type_RGBA; // careful: reversed order
+    case PF::Format_RGBA8888: return NDIlib_FourCC_type_RGBA;
+    case PF::Format_RGBX8888: return NDIlib_FourCC_type_RGBX;
+    case PF::Format_NV12:     return NDIlib_FourCC_type_NV12;
+    default: return NDIlib_FourCC_type_BGRX; // safe-ish fallback
     }
 }
 

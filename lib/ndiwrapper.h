@@ -25,4 +25,5 @@ public:
     static QString ndiFrameTypeToString(NDIlib_frame_format_type_e ndiFrameType);
     static QString ndiFourCCToString(NDIlib_FourCC_video_type_e ndiFourCC);
     static QVideoFrameFormat::PixelFormat ndiPixelFormatToQtPixelFormat(NDIlib_FourCC_video_type_e ndiFourCC);
+    static NDIlib_FourCC_video_type_e qtPixelFormatToNdiPixelFormat(QVideoFrameFormat::PixelFormat pixelFormat);
 };

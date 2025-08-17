@@ -8,18 +8,11 @@
 #include "MainWindow.h"
 #include "ndiwrapper.h"
 
-using namespace winrt;
-using namespace Windows::UI::Composition;
-using namespace Windows::UI::Composition::Desktop;
-
 int main(int argc, char *argv[])
 {
     qSetMessagePattern("[%{time hh:mm:ss.zzz} p%{pid} t%{threadid} %{if-debug}D%{endif}%{if-info}I%{endif}%{if-warning}W%{endif}%{if-critical}C%{endif}%{if-fatal}F%{endif}] %{function}:%{line} | %{message}");
 
     QApplication app(argc, argv);
-
-    winrt::uninit_apartment();
-    winrt::init_apartment(apartment_type::single_threaded);
 
     QTranslator translator;
     auto uiLanguages = QLocale::system().uiLanguages();

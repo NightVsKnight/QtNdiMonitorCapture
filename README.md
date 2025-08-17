@@ -68,9 +68,9 @@ More are planned.
 ## Build
 Requirements:
 * Currently only compiles and runs on Windows
-* Visual Studio 2019 Community installed
-* Qt6 installed with the following components:
-  * MSVC 2019 64-bit
+* Visual Studio 2022 Community installed
+* Qt6 6.9.1 installed with the following components:
+  * MSVC 2022 64-bit
   * Qt Multimedia
   * Qt Creator 9.0.2
   * Qt Installer Framework 4.5
