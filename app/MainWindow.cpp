@@ -6,6 +6,7 @@
 #include <QContextMenuEvent>
 #include <QCoreApplication>
 #include <QDebug>
+#include <QMediaCaptureSession>
 #include <QMenu>
 #include <QVideoSink>
 
@@ -16,6 +17,9 @@
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
+    , captureScreen(new QScreenCapture(this))
+    , captureSink(new QVideoSink(this))
+    , mediaCaptureSession(new QMediaCaptureSession(this))
     , m_mediaPlayer(this)
     , m_videoWidget(this)
     , m_ndiReceiver(this)
@@ -27,6 +31,12 @@ MainWindow::MainWindow(QWidget* parent)
     setWindowIconText(windowTitle());
 
     resize(960, 540);
+
+    connect(captureSink, &QVideoSink::videoFrameChanged,
+            this, &MainWindow::onMediaCaptureVideoFrame);
+
+    mediaCaptureSession->setScreenCapture(captureScreen);
+    mediaCaptureSession->setVideoSink(captureSink);
 
     m_videoSink = m_videoWidget.videoSink();
     setCentralWidget(&m_videoWidget);
@@ -66,7 +76,7 @@ void MainWindow::createTrayIcon()
     m_pTrayIconMenu = new QMenu(this);
     m_pTrayIconMenu->addAction(m_pActionRestore);
     m_pTrayIconMenu->addSeparator();
-    m_pMenuMonitors = m_pTrayIconMenu->addMenu(tr("Capture Monitor"));
+    m_pMenuCaptureScreens = m_pTrayIconMenu->addMenu(tr("Capture Screen"));
     m_pTrayIconMenu->addSeparator();
     m_pTrayIconMenu->addAction(m_pActionExit);
 
@@ -79,9 +89,9 @@ void MainWindow::createTrayIcon()
 
 void MainWindow::closeEvent(QCloseEvent* event)
 {
-    if (m_ndiSender.isCapturing())
+    if (captureScreen->isActive())
     {
-        // TODO: Prompt if they really want to stop capturing and close
+        qDebug() << "TODO: Prompt if they really want to stop capturing and close";
         hide();
         event->ignore();
     }
@@ -105,6 +115,11 @@ void MainWindow::hideEvent(QHideEvent*)
 {
     qDebug() << "hideEvent(...)";
     m_mediaPlayer.stop();
+
+    // Why always stop NDI when hiding?!?!
+    // I know we are not going to show what we receive,
+    // but this may not be always desirable.
+    // TODO: Should there be an option to stop/not-stop NDI when hiding?
     ndiReceiverStop();
 }
 
@@ -117,8 +132,8 @@ void MainWindow::contextMenuEvent(QContextMenuEvent* event)
     m_pActionFullScreen->setChecked(isFullScreen());
     menu.addAction(m_pActionFullScreen);
     menu.addSeparator();
-    menuUpdateMonitors(m_pMenuMonitors);
-    menu.addMenu(m_pMenuMonitors);
+    menuUpdateCaptureScreens(m_pMenuCaptureScreens);
+    menu.addMenu(m_pMenuCaptureScreens);
     menu.addSeparator();
     menu.addAction(m_pActionExit);
     menu.exec(event->globalPos());
@@ -144,7 +159,7 @@ void MainWindow::onTrayIconActivated(QSystemTrayIcon::ActivationReason reason)
 void MainWindow::trayIconMenuUpdate()
 {
     qDebug() << "+updateTrayIconMenu()";
-    menuUpdateMonitors(m_pMenuMonitors);
+    menuUpdateCaptureScreens(m_pMenuCaptureScreens);
     qDebug() << "-updateTrayIconMenu()";
 }
 
@@ -186,45 +201,42 @@ void MainWindow::menuUpdateNdiSources(QMenu* menu)
     }
 }
 
-bool operator < (const Monitor &lhs, const Monitor &rhs)
+void MainWindow::menuUpdateCaptureScreens(QMenu* menu)
 {
-    return lhs.ClassName() < rhs.ClassName();
-}
+    auto captureScreens = getCaptureScreens();
 
-void MainWindow::menuUpdateMonitors(QMenu* menu)
-{
-    auto monitors = getMonitors();
-    std::sort(monitors.begin(), monitors.end());
-
-    auto selectedMonitorName = m_selectedMonitorName;
-    qDebug() << "selectedMonitorName" << selectedMonitorName;
+    auto selectedCaptureScreenName = m_selectedCaptureScreenName;
+    qDebug() << "selectedCaptureScreenName" << selectedCaptureScreenName;
 
     menu->clear();
 
     auto action = new QAction(tr("None"), menu);
     action->setData(0);
     action->setCheckable(true);
-    if (selectedMonitorName.isEmpty())
+    if (selectedCaptureScreenName.isEmpty())
     {
         action->setChecked(true);
     }
-    connect(action, &QAction::triggered, this, &MainWindow::onActionMonitorTriggered);
+    connect(action, &QAction::triggered, this, &MainWindow::onActionCaptureScreenTriggered);
     menu->addAction(action);
 
-    for (auto monitor : monitors)
+    for (auto captureScreen : captureScreens)
     {
-        auto monitorName = QString::fromStdWString(monitor.ClassName());
+        QString captureScreenName;
+        QTextStream str(&captureScreenName);
+        str << captureScreen->name() << " (" << captureScreen->size().width() << 'x'
+            << captureScreen->size().height() << ", " << captureScreen->logicalDotsPerInch() << "DPI)";
 
-        auto actionText = monitorName;
+        auto actionText = captureScreenName;
         auto action = new QAction(actionText, menu);
         action->setCheckable(true);
 
-        if (monitorName == selectedMonitorName)
+        if (captureScreenName == selectedCaptureScreenName)
         {
             action->setChecked(true);
         }
 
-        connect(action, &QAction::triggered, this, &MainWindow::onActionMonitorTriggered);
+        connect(action, &QAction::triggered, this, &MainWindow::onActionCaptureScreenTriggered);
         menu->addAction(action);
     }
 }
@@ -243,20 +255,20 @@ void MainWindow::onActionNdiSourceTriggered()
     m_ndiReceiver.selectSource(selectedNdiSourceName);
 }
 
-void MainWindow::onActionMonitorTriggered()
+void MainWindow::onActionCaptureScreenTriggered()
 {
-    qDebug() << "onActionMonitorTriggered()";
+    qDebug() << "onActionCaptureScreenTriggered()";
 
     auto action = qobject_cast<QAction*>(sender());
     if (!action) return;
     auto actionText = action->text();
 
-    auto selectedMonitorName = (actionText == tr("None")) ? "" : actionText;
-    qDebug() << "selectedMonitorName" << selectedMonitorName;
+    auto selectedCaptureScreenName = (actionText == tr("None")) ? "" : actionText;
+    qDebug() << "selectedCaptureScreenName" << selectedCaptureScreenName;
 
-    m_selectedMonitorName = selectedMonitorName;
+    m_selectedCaptureScreenName = selectedCaptureScreenName;
 
-    if (selectedMonitorName.isEmpty())
+    if (selectedCaptureScreenName.isEmpty())
     {
         captureStop();
     }
@@ -349,29 +361,29 @@ void MainWindow::ndiReceiverStop()
 // public methods
 //
 
-std::vector<Monitor> MainWindow::getMonitors()
+QList<QScreen*> MainWindow::getCaptureScreens()
 {
-    return EnumerateMonitors();
+    return QGuiApplication::screens();
 }
 
-void MainWindow::captureStart(HMONITOR hmonitor)
+void MainWindow::captureStart(QScreen* screen)
 {
     qDebug() << "+captureStart(...)";
 
     captureStop();
 
-    if (hmonitor == 0)
+    if (screen == nullptr)
     {
-        auto monitors = getMonitors();
-        foreach (auto monitor, monitors)
+        auto captureScreens = getCaptureScreens();
+        foreach (auto captureScreen, captureScreens)
         {
-            if (monitor.IsPrimary())
+            if (QGuiApplication::primaryScreen() == captureScreen)
             {
-                hmonitor = monitor.Hmonitor();
+                screen = captureScreen;
                 break;
             }
         }
-        if (hmonitor == 0)
+        if (screen == 0)
         {
             qDebug() << "Failed to find any monitors to capture";
             return;
@@ -381,9 +393,15 @@ void MainWindow::captureStart(HMONITOR hmonitor)
     connect(&m_ndiSender, &NdiSender::onMetadataReceived, this, &MainWindow::onNdiSenderMetadataReceived);
     connect(&m_ndiSender, &NdiSender::onReceiverCountChanged, this, &MainWindow::onNdiSenderReceiverCountChanged);
 
-    m_ndiSender.start(hmonitor);
+    captureScreen->setScreen(screen);
+    captureScreen->setActive(true);
 
-    // Never hide this icon once it is shown
+    captureScreen->start();
+
+    m_ndiSender.start(/*screen*/);
+
+    // Never hide this icon once it is shown!
+    // It will be the only way to stop the capture and thus the app too.
     m_pTrayIcon->show();
 
     qDebug() << "-captureStart(...)";
@@ -392,10 +410,18 @@ void MainWindow::captureStart(HMONITOR hmonitor)
 void MainWindow::captureStop()
 {
     qDebug() << "+captureStop()";
+    captureScreen->stop();
+    captureScreen->setActive(false);
+    captureScreen->setScreen(nullptr);
     disconnect(&m_ndiSender, &NdiSender::onMetadataReceived, this, &MainWindow::onNdiSenderMetadataReceived);
     disconnect(&m_ndiSender, &NdiSender::onReceiverCountChanged, this, &MainWindow::onNdiSenderReceiverCountChanged);
     m_ndiSender.stop();
     qDebug() << "-captureStop()";
+}
+
+void MainWindow::onMediaCaptureVideoFrame(const QVideoFrame &frame)
+{
+    m_ndiSender.sendVideoFrame(frame);
 }
 
 void MainWindow::onNdiSenderMetadataReceived(QString metadata)

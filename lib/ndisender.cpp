@@ -6,7 +6,6 @@
 
 NdiSender::NdiSender(QObject *parent)
     : QObject{parent}
-    , m_pSimpleCapture{nullptr}
     , m_pNdiSend{nullptr}
     , m_frameCount{0}
     , m_frameSizeBytes{0}
@@ -25,54 +24,9 @@ void NdiSender::init()
     m_pNdi = NdiWrapper::ndiGet();
 
     m_bReconnect = false;
-    m_senderName = "QtNdiCaptureSender";
+    m_senderName = "QtNdiMonitorCaptureSender";
     m_connectionMetadata = "";
     m_receiverCount = 0;
-
-    m_pixelFormatDx = PIXEL_FORMAT_DX;
-    m_pixelFormatNdi = dxPixelFormatToNdiPixelFormat(m_pixelFormatDx);
-    m_pixelSizeBytes = getPixelSizeBytes(m_pixelFormatDx);
-}
-
-DirectXPixelFormat NdiSender::ndiPixelFormatToDxPixelFormat(NDIlib_FourCC_video_type_e pixelFormatNdi)
-{
-    switch(pixelFormatNdi)
-    {
-    case NDIlib_FourCC_video_type_e::NDIlib_FourCC_type_BGRA:
-        return DirectXPixelFormat::B8G8R8A8UIntNormalized;
-    // TODO: Add more formats as necessary
-    default:
-        throw std::runtime_error(QString("Unhandled pixel format %1").arg((int)pixelFormatNdi).toStdString());
-    }
-}
-
-NDIlib_FourCC_video_type_e NdiSender::dxPixelFormatToNdiPixelFormat(DirectXPixelFormat pixelFormatDx)
-{
-    switch(pixelFormatDx)
-    {
-    case DirectXPixelFormat::B8G8R8A8UIntNormalized:
-        return NDIlib_FourCC_video_type_e::NDIlib_FourCC_video_type_BGRA;
-    // TODO: Add more formats as necessary
-    default:
-        throw std::runtime_error(QString("Unhandled pixel format %1").arg((int)pixelFormatDx).toStdString());
-    }
-}
-
-int NdiSender::getPixelSizeBytes(DirectXPixelFormat pixelFormatDx)
-{
-    switch(pixelFormatDx)
-    {
-    case DirectXPixelFormat::B8G8R8A8UIntNormalized:
-        return 4;
-    // TODO: Add more formats as necessary
-    default:
-        throw std::runtime_error(QString("Unhandled pixel format %1").arg((int)pixelFormatDx).toStdString());
-    }
-}
-
-bool NdiSender::isCapturing()
-{
-    return m_pSimpleCapture != nullptr;
 }
 
 void NdiSender::setConnectionInfo(QString senderName, QString connectionMetadata)
@@ -85,12 +39,6 @@ void NdiSender::setConnectionInfo(QString senderName, QString connectionMetadata
 void NdiSender::stop()
 {
     qDebug() << "+stop()";
-    auto pSimpleCapture = m_pSimpleCapture.exchange(nullptr);
-    if (pSimpleCapture)
-    {
-        pSimpleCapture->Close();
-        pSimpleCapture = nullptr;
-    }
     auto pNdiSend = m_pNdiSend.exchange(nullptr);
     if (pNdiSend)
     {
@@ -112,21 +60,11 @@ void NdiSender::stop()
     qDebug() << "-stop()";
 }
 
-void NdiSender::start(HMONITOR hmonitor)
+void NdiSender::start()
 {
-    qDebug() << "+start(...)";
+    qDebug() << "+start()";
 
     stop();
-
-    if (hmonitor == 0) return;
-
-    auto item = CreateCaptureItemForMonitor(hmonitor);
-
-    m_pSimpleCapture = new SimpleCapture();
-    (*m_pSimpleCapture).StartCapture(item, m_pixelFormatDx, m_pixelSizeBytes, NUM_CAPTURE_FRAME_BUFFERS,
-         this,
-         static_cast<SimpleCapture::CALLBACK_ON_FRAME>(NdiSender::onFrameReceived),
-         static_cast<SimpleCapture::CALLBACK_ON_FRAME_BUFFER>(NdiSender::onFrameReceivedBuffer));
 
     NDIlib_send_create_t NDI_send_create_desc;
     auto utf8 = m_senderName.toUtf8();
@@ -141,9 +79,10 @@ void NdiSender::start(HMONITOR hmonitor)
 
     // TODO: Capture and send **Audio** in dedicated thread...
 
-    qDebug() << "-start(...)";
+    qDebug() << "-start()";
 }
 
+/*
 bool NdiSender::onFrameReceived(
         SimpleCapture*,
         Direct3D11CaptureFrame const& frame)
@@ -197,16 +136,34 @@ bool NdiSender::onFrameReceived(
 
     return true;
 }
+*/
 
-void NdiSender::onFrameReceivedBuffer(
-        SimpleCapture*,
-        int frameWidth,
-        int frameHeight,
-        int frameStrideBytes,
-        void* pFrameBuffer)
+void NdiSender::sendVideoFrame(QVideoFrame const& frame)
 {
     auto pNdiSend = m_pNdiSend.load();
-    if (!pNdiSend || !pFrameBuffer) return;
+    if (!pNdiSend) return;
+
+    auto receiverCount = m_pNdi->send_get_no_connections(pNdiSend, 0);
+    //qDebug() << "receiverCount" << receiverCount;
+    if (receiverCount != m_receiverCount)
+    {
+        emit onReceiverCountChanged(receiverCount);
+        m_receiverCount = receiverCount;
+    }
+    if (receiverCount == 0) return;
+
+    if (!frame.isValid()) return;
+
+    QVideoFrame f(frame); // cheap refcount
+    if (!f.map(QVideoFrame::ReadOnly)) return;
+
+    auto frameWidth = frame.width();
+    auto frameHeight = frame.height();
+    auto frameStrideBytes = frame.bytesPerLine(0); // returns 0 if [above] `map` is not called
+    auto framePixelFormat = frame.pixelFormat();
+    //qDebug() << "framePixelFormat=" << framePixelFormat;
+    auto ndiPixelFormat = NdiWrapper::qtPixelFormatToNdiPixelFormat(framePixelFormat);
+    //qDebug() << "ndiPixelFormat=" << NdiWrapper::ndiFourCCToString(ndiPixelFormat);
 
     auto thisFrameSizeBytes = frameStrideBytes * frameHeight;
     if (m_frameSizeBytes < thisFrameSizeBytes)
@@ -224,19 +181,24 @@ void NdiSender::onFrameReceivedBuffer(
     }
 
     uint8_t* pOutBuffer = m_pNdiSendBuffers[m_frameCount++ % NUM_CAPTURE_FRAME_BUFFERS];
-    memcpy(pOutBuffer, pFrameBuffer, thisFrameSizeBytes);
+    memcpy(pOutBuffer, frame.bits(0), thisFrameSizeBytes);
 
-    NDIlib_video_frame_v2_t video_frame;
-    video_frame.xres = frameWidth;
-    video_frame.yres = frameHeight;
-    video_frame.FourCC = m_pixelFormatNdi;
-    video_frame.line_stride_in_bytes = frameStrideBytes;
-    video_frame.p_data = pOutBuffer;
+    NDIlib_video_frame_v2_t ndi_frame;
+    ndi_frame.xres = frameWidth;
+    ndi_frame.yres = frameHeight;
+    ndi_frame.FourCC = ndiPixelFormat;
+    ndi_frame.line_stride_in_bytes = frameStrideBytes;
+    ndi_frame.p_data = pOutBuffer;
+    //ndi_frame.frame_rate_N = 60; // Or detect via screen refresh
+    //ndi_frame.frame_rate_D = 1;
+    //ndi_frame.timecode = NDIlib_send_timecode_synthesize;
 
-    m_pNdi->send_send_video_async_v2(pNdiSend, &video_frame);
+    m_pNdi->send_send_video_async_v2(pNdiSend, &ndi_frame);
+
+    f.unmap();
 }
 
-void NdiSender::sendMetadata(QString metadata)
+void NdiSender::sendMetadata(QString const& metadata)
 {
     auto pNdiSend = m_pNdiSend.load();
     if (!pNdiSend) return;

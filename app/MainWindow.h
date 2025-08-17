@@ -2,10 +2,10 @@
 
 #include <QMainWindow>
 #include <QMediaPlayer>
+#include <QMetaEnum>
+#include <QScreenCapture>
 #include <QSystemTrayIcon>
 #include <QtMultimediaWidgets/QVideoWidget>
-
-#include "Win32MonitorEnumeration.h"
 
 #include "ndireceiver.h"
 #include "ndisender.h"
@@ -66,15 +66,19 @@ public:
     MainWindow(QWidget* parent = nullptr);
     ~MainWindow();
 
-    std::vector<Monitor> getMonitors();
-    void captureStart(HMONITOR hmonitor = 0);
+    QList<QScreen*> getCaptureScreens();
+    /**
+     * @brief captureStart
+     * @param screen screen to use; if nullptr then use the primary screen
+     */
+    void captureStart(QScreen* screen = nullptr);
     void captureStop();
 
 private:
     QAction* m_pActionFullScreen;
     QAction* m_pActionRestore;
     QAction* m_pActionExit;
-    QMenu* m_pMenuMonitors;
+    QMenu* m_pMenuCaptureScreens;
     QMenu* m_pTrayIconMenu;
     QSystemTrayIcon* m_pTrayIcon;
     void createActions();
@@ -94,11 +98,11 @@ private slots:
 private:
     void trayIconMenuUpdate();
     void menuUpdateNdiSources(QMenu* menu);
-    void menuUpdateMonitors(QMenu* menu);
+    void menuUpdateCaptureScreens(QMenu* menu);
 
 private slots:
     void onActionNdiSourceTriggered();
-    void onActionMonitorTriggered();
+    void onActionCaptureScreenTriggered();
     void onActionFullScreenTriggered();
     void onActionRestoreWindowTriggered();
     void onActionExitTriggered();
@@ -107,6 +111,9 @@ private:
     void setFullScreen(bool fullScreen);
 
 private:
+    QScreenCapture *captureScreen = nullptr;
+    QVideoSink *captureSink = nullptr;
+    QMediaCaptureSession *mediaCaptureSession = nullptr;
     QMediaPlayer m_mediaPlayer;
     QVideoWidget m_videoWidget;
     QVideoSink* m_videoSink;
@@ -120,9 +127,10 @@ private slots:
     void onNdiReceiverSourceDisconnected(QString sourceName);
 
 private:
-    QString m_selectedMonitorName;
+    QString m_selectedCaptureScreenName;
     NdiSender m_ndiSender;
 private slots:
+    void onMediaCaptureVideoFrame(const QVideoFrame &frame);
     void onNdiSenderMetadataReceived(QString metadata);
     void onNdiSenderReceiverCountChanged(int receiverCount);
 };

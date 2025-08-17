@@ -11,20 +11,12 @@ CONFIG += c++17
 INCLUDEPATH += ../lib/
 INCLUDEPATH += ../lib/GraphicsCapture/
 
-PRECOMPILED_HEADER = ../lib/GraphicsCapture/pch.h
-
 HEADERS += \
     MainWindow.h \
     ../lib/ndireceiver.h \
     ../lib/ndireceiverworker.h \
     ../lib/ndisender.h \
-    ../lib/ndiwrapper.h \
-    ../lib/GraphicsCapture/capture.interop.h \
-    ../lib/GraphicsCapture/composition.interop.h \
-    ../lib/GraphicsCapture/d3dHelpers.h \
-    ../lib/GraphicsCapture/direct3d11.interop.h \
-    ../lib/GraphicsCapture/SimpleCapture.h \
-    ../lib/GraphicsCapture/Win32MonitorEnumeration.h
+    ../lib/ndiwrapper.h
 
 SOURCES += \
     main.cpp \
@@ -32,9 +24,7 @@ SOURCES += \
     ../lib/ndireceiver.cpp \
     ../lib/ndireceiverworker.cpp \
     ../lib/ndisender.cpp \
-    ../lib/ndiwrapper.cpp \
-    ../lib/GraphicsCapture/SimpleCapture.cpp \
-    ../lib/GraphicsCapture/Win32MonitorEnumeration.cpp
+    ../lib/ndiwrapper.cpp
 
 RESOURCES = resources.qrc
 
@@ -43,7 +33,7 @@ TRANSLATIONS += \
 
 DISTFILES += \
     ../.gitignore \
-    ../lib/GraphicsCapture/readme.md
+    ../README.md
 
 CONFIG += lrelease
 CONFIG += embed_translations
@@ -51,10 +41,6 @@ CONFIG += embed_translations
 QMAKE_CXXFLAGS += /Zc:twoPhase-
 
 INCLUDEPATH += "../ndi/inc/"
-
-win32 {
-    LIBS += -lwindowsapp
-}
 
 CONFIG(package) {
     CONFIG(debug, debug|release) {

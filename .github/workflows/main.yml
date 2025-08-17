@@ -40,8 +40,8 @@ jobs:
       - name: 'Install Qt6'
         uses: jurplel/install-qt-action@v3
         with:
-          version: 6.4.2
-          arch: win64_msvc2019_64
+          version: 6.9.1
+          arch: win64_msvc2022_64
           modules: 'qtmultimedia'
           tools: 'tools_ifw'
           setup-python: false
@@ -64,7 +64,7 @@ jobs:
           & CI\windows-build.ps1 "CONFIG+=package"
 
       - name: 'Upload Artifact'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: 'QtNdiMonitorCaptureInstaller'
           path: ${{ github.workspace }}/app/installer/QtNdiMonitorCaptureInstaller.exe

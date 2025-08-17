@@ -223,6 +223,7 @@ void NdiReceiverWorker::run()
             recv_desc.p_ndi_recv_name = utf8.constData();
             recv_desc.source_to_connect_to = ndiList.at(nSourceChannel);
             //recv_desc.color_format = NDIlib_recv_color_format_UYVY_BGRA;
+            //recv_desc.color_format = NDIlib_recv_color_format_BGRX_BGRA;
             recv_desc.color_format = NDIlib_recv_color_format_best;
             recv_desc.bandwidth = NDIlib_recv_bandwidth_highest;
             recv_desc.allow_video_fields = true;
