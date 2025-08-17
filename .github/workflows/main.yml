@@ -4,21 +4,21 @@
 # https://github.com/obsproject/obs-studio/blob/master/.github/workflows/main.yml
 #
 
-name: 'CI'
+name: CI
 
 on:
   push:
     paths-ignore:
       - '**.md'
     branches:
-      - "main"
+      - main
     tags:
       - '*'
   pull_request:
     paths-ignore:
       - '**.md'
     branches:
-      - "main"
+      - main
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -30,24 +30,26 @@ jobs:
   # https://github.com/obsproject/obs-studio/blob/master/.github/workflows/main.yml#L282 +/- a few lines
   #
   windows_build:
-    name: 'Windows'
+    name: Windows
     runs-on: [windows-2022]
     if: always()
     steps:
-      - name: 'Checkout'
+      - name: Checkout
         uses: actions/checkout@v3
 
-      - name: 'Install Qt6'
-        uses: jurplel/install-qt-action@v3
+      - name: Install Qt6
+        uses: jurplel/install-qt-action@v4
         with:
           version: 6.9.1
+          host: windows
+          target: desktop
           arch: win64_msvc2022_64
-          modules: 'qtmultimedia'
-          tools: 'tools_ifw'
+          modules: qtmultimedia
+          tools: tools_ifw
           setup-python: false
 
-      - name: 'Install Qt JOM'
-        working-directory: ${{ env.Qt6_DIR }}
+      - name: Install Qt JOM
+        working-directory: ${{ env.QT_ROOT_DIR }}
         shell: cmd
         run: |
           mkdir ..\..\Tools\QtCreator\bin\
@@ -57,19 +59,19 @@ jobs:
           del jom.zip
           popd
 
-      - name: 'Build & Package'
+      - name: Build & Package
         id: buildAndPackage
         shell: pwsh
         run: |
-          & CI\windows-build.ps1 "CONFIG+=package"
+          CI\windows-build.ps1 "CONFIG+=package"
 
-      - name: 'Upload Artifact'
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: 'QtNdiMonitorCaptureInstaller'
+          name: QtNdiMonitorCaptureInstaller
           path: ${{ github.workspace }}/app/installer/QtNdiMonitorCaptureInstaller.exe
 
-      - name: 'Upload Release'
+      - name: Upload Release
         if: ${{ startsWith(github.ref, 'refs/tags/') && github.event_name != 'pull_request' }}
         uses: svenstaro/upload-release-action@v2
         with:
