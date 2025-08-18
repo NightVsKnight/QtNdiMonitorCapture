@@ -28,6 +28,7 @@ public:
     void stop();
 
     void sendVideoFrame(QVideoFrame const& frame);
+    void sendAudioFrame(const float* data, int channelCount, int sampleRate, int sampleCount);
     void sendMetadata(QString const& metadata);
 
 signals:

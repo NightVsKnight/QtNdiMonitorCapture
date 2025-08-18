@@ -198,6 +198,28 @@ void NdiSender::sendVideoFrame(QVideoFrame const& frame)
     f.unmap();
 }
 
+void NdiSender::sendAudioFrame(const float* data, int channelCount, int sampleRate, int sampleCount)
+{
+    auto pNdiSend = m_pNdiSend.load();
+    if (!pNdiSend) return;
+
+    auto receiverCount = m_pNdi->send_get_no_connections(pNdiSend, 0);
+    if (receiverCount != m_receiverCount)
+    {
+        emit onReceiverCountChanged(receiverCount);
+        m_receiverCount = receiverCount;
+    }
+    if (receiverCount == 0) return;
+
+    NDIlib_audio_frame_interleaved_32f_t audioFrame;
+    audioFrame.sample_rate = sampleRate;
+    audioFrame.no_channels = channelCount;
+    audioFrame.no_samples = sampleCount;
+    audioFrame.p_data = (float*)data;
+
+    m_pNdi->send_send_audio_interleaved_32f(pNdiSend, &audioFrame);
+}
+
 void NdiSender::sendMetadata(QString const& metadata)
 {
     auto pNdiSend = m_pNdiSend.load();

@@ -9,6 +9,7 @@
 #include <QMediaCaptureSession>
 #include <QMenu>
 #include <QVideoSink>
+#include <QVector>
 
 #include "ndiwrapper.h"
 
@@ -24,6 +25,9 @@ MainWindow::MainWindow(QWidget* parent)
     , m_videoWidget(this)
     , m_ndiReceiver(this)
     , m_ndiSender(this)
+    , m_audioSource(nullptr)
+    , m_audioIODevice(nullptr)
+    , m_convertAudio(false)
 {
     setWindowTitle(QCoreApplication::applicationName());
     QIcon icon(":/Logos/NDI_Yellow_Inverted.ico");
@@ -398,6 +402,54 @@ void MainWindow::captureStart(QScreen* screen)
 
     captureScreen->start();
 
+    // find loopback audio device
+    QAudioDevice loopbackDevice;
+    const auto inputs = QMediaDevices::audioInputs();
+    for (const QAudioDevice &dev : inputs)
+    {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+        if (dev.isLoopback())
+#else
+        if (dev.description().contains("loopback", Qt::CaseInsensitive))
+#endif
+        {
+            loopbackDevice = dev;
+            break;
+        }
+    }
+
+    if (!loopbackDevice.isNull())
+    {
+        QAudioFormat captureAudioFormat;
+        captureAudioFormat.setSampleRate(48000);
+        captureAudioFormat.setChannelCount(2);
+        captureAudioFormat.setSampleFormat(QAudioFormat::Float);
+
+        QAudioFormat format = captureAudioFormat;
+        m_convertAudio = false;
+        if (!loopbackDevice.isFormatSupported(captureAudioFormat))
+        {
+            qWarning() << "Requested audio format not supported; using preferred format";
+            format = loopbackDevice.preferredFormat();
+            if (format.sampleFormat() != QAudioFormat::Float)
+            {
+                m_convertAudio = true;
+            }
+        }
+
+        m_audioFormat = format;
+        m_audioSource = new QAudioSource(loopbackDevice, format, this);
+        m_audioIODevice = m_audioSource->start();
+        if (m_audioIODevice)
+        {
+            connect(m_audioIODevice, &QIODevice::readyRead, this, &MainWindow::onAudioDataReady);
+        }
+    }
+    else
+    {
+        qWarning() << "No audio loopback device found; skipping audio capture";
+    }
+
     m_ndiSender.start(/*screen*/);
 
     // Never hide this icon once it is shown!
@@ -413,6 +465,19 @@ void MainWindow::captureStop()
     captureScreen->stop();
     captureScreen->setActive(false);
     captureScreen->setScreen(nullptr);
+
+    if (m_audioIODevice)
+    {
+        disconnect(m_audioIODevice, &QIODevice::readyRead, this, &MainWindow::onAudioDataReady);
+        m_audioIODevice = nullptr;
+    }
+    if (m_audioSource)
+    {
+        m_audioSource->stop();
+        delete m_audioSource;
+        m_audioSource = nullptr;
+    }
+
     disconnect(&m_ndiSender, &NdiSender::onMetadataReceived, this, &MainWindow::onNdiSenderMetadataReceived);
     disconnect(&m_ndiSender, &NdiSender::onReceiverCountChanged, this, &MainWindow::onNdiSenderReceiverCountChanged);
     m_ndiSender.stop();
@@ -422,6 +487,47 @@ void MainWindow::captureStop()
 void MainWindow::onMediaCaptureVideoFrame(const QVideoFrame &frame)
 {
     m_ndiSender.sendVideoFrame(frame);
+}
+
+void MainWindow::onAudioDataReady()
+{
+    if (!m_audioIODevice)
+        return;
+
+    QByteArray data = m_audioIODevice->readAll();
+    if (data.isEmpty())
+        return;
+
+    int channelCount = m_audioFormat.channelCount();
+    int bytesPerSample = m_audioFormat.bytesPerSample();
+    int sampleCount = data.size() / bytesPerSample / channelCount;
+
+    QVector<float> floatData(sampleCount * channelCount);
+    if (m_convertAudio)
+    {
+        if (m_audioFormat.sampleFormat() == QAudioFormat::Int16)
+        {
+            const qint16* src = reinterpret_cast<const qint16*>(data.constData());
+            for (int i = 0; i < sampleCount * channelCount; ++i)
+                floatData[i] = src[i] / 32768.0f;
+        }
+        else if (m_audioFormat.sampleFormat() == QAudioFormat::UInt8)
+        {
+            const quint8* src = reinterpret_cast<const quint8*>(data.constData());
+            for (int i = 0; i < sampleCount * channelCount; ++i)
+                floatData[i] = (static_cast<int>(src[i]) - 128) / 128.0f;
+        }
+        else
+        {
+            return; // unsupported conversion
+        }
+    }
+    else
+    {
+        memcpy(floatData.data(), data.constData(), data.size());
+    }
+
+    m_ndiSender.sendAudioFrame(floatData.data(), channelCount, m_audioFormat.sampleRate(), sampleCount);
 }
 
 void MainWindow::onNdiSenderMetadataReceived(QString metadata)
