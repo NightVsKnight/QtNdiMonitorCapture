@@ -234,7 +234,7 @@ void MainWindow::menuUpdateCaptureScreens(QMenu* menu)
     connect(action, &QAction::triggered, this, &MainWindow::onActionCaptureScreenTriggered);
     menu->addAction(action);
 
-    for (auto captureScreen : captureScreens)
+    foreach (auto captureScreen, captureScreens)
     {
         QString captureScreenName;
         QTextStream str(&captureScreenName);
