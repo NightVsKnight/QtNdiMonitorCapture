@@ -51,7 +51,7 @@ $QtVersion = (Get-Item $Qt6Dir\..).Basename.Replace(".", "_")
 "QtVersion=$QtVersion"
 $QtIfwVersion = (Get-ChildItem $Qt6Dir\..\..\Tools\QtInstallerFramework | Sort-Object -Property {$_.Name -as [int]} | Select-Object -Last 1).Basename
 "QtIfwVersion=$QtIfwVersion"
-$env:QtIfwVersion = $QtIfwVersion # Use in QtNdiMonitorCapture.pro to calc QT_IFW_DIR
+$env:QtIfwVersion = $QtIfwVersion # Used in QtNdiMonitorCapture.pro to calc QT_IFW_DIR
 $QtJomDir = Resolve-Path -Path $Qt6Dir\..\..\Tools\QtCreator\bin\jom
 "QtJomDir=$QtJomDir"
 
