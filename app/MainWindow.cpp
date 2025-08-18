@@ -8,6 +8,7 @@
 #include <QDebug>
 #include <QMessageBox>
 #include <QMediaCaptureSession>
+#include <QMediaDevices>
 #include <QMenu>
 #include <QVideoSink>
 
@@ -148,6 +149,23 @@ void MainWindow::contextMenuEvent(QContextMenuEvent* event)
     menu.addSeparator();
     menuUpdateCaptureScreens(m_pMenuCaptureScreens);
     menu.addMenu(m_pMenuCaptureScreens);
+    menu.addSeparator();
+    // Add audio input devices
+    auto audioInputMenu = menu.addMenu(tr("Audio Input Devices"));
+    const auto audioInputs = QMediaDevices::audioInputs();
+    for (const auto &device : audioInputs)
+    {
+        auto action = audioInputMenu->addAction(device.description());
+        action->setEnabled(false);
+    }
+    // Add audio output devices
+    auto audioOutputMenu = menu.addMenu(tr("Audio Output Devices"));
+    const auto audioOutputs = QMediaDevices::audioOutputs();
+    for (const auto &device : audioOutputs)
+    {
+        auto action = audioOutputMenu->addAction(device.description());
+        action->setEnabled(false);
+    }
     menu.addSeparator();
     menu.addAction(m_pActionExit);
     menu.exec(event->globalPos());
