@@ -6,6 +6,9 @@
 #include <QScreenCapture>
 #include <QSystemTrayIcon>
 #include <QtMultimediaWidgets/QVideoWidget>
+#include <QAudioSource>
+#include <QMediaDevices>
+#include <QAudioFormat>
 
 #include "ndireceiver.h"
 #include "ndisender.h"
@@ -114,6 +117,9 @@ private:
     QScreenCapture *captureScreen = nullptr;
     QVideoSink *captureSink = nullptr;
     QMediaCaptureSession *mediaCaptureSession = nullptr;
+    QAudioSource *captureAudioSource = nullptr;
+    QIODevice *captureAudioIo = nullptr;
+    QAudioFormat captureAudioFormat;
     QMediaPlayer m_mediaPlayer;
     QVideoWidget m_videoWidget;
     QVideoSink* m_videoSink;
@@ -133,4 +139,5 @@ private slots:
     void onMediaCaptureVideoFrame(const QVideoFrame &frame);
     void onNdiSenderMetadataReceived(QString metadata);
     void onNdiSenderReceiverCountChanged(int receiverCount);
+    void onCaptureAudioReadyRead();
 };

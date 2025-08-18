@@ -398,6 +398,13 @@ void MainWindow::captureStart(QScreen* screen)
 
     captureScreen->start();
 
+    captureAudioFormat.setSampleRate(44100);
+    captureAudioFormat.setChannelCount(2);
+    captureAudioFormat.setSampleFormat(QAudioFormat::Float);
+    captureAudioSource = new QAudioSource(QMediaDevices::defaultAudioInput(), captureAudioFormat, this);
+    captureAudioIo = captureAudioSource->start();
+    connect(captureAudioIo, &QIODevice::readyRead, this, &MainWindow::onCaptureAudioReadyRead);
+
     m_ndiSender.start(/*screen*/);
 
     // Never hide this icon once it is shown!
@@ -413,6 +420,14 @@ void MainWindow::captureStop()
     captureScreen->stop();
     captureScreen->setActive(false);
     captureScreen->setScreen(nullptr);
+    if (captureAudioSource)
+    {
+        disconnect(captureAudioIo, &QIODevice::readyRead, this, &MainWindow::onCaptureAudioReadyRead);
+        captureAudioSource->stop();
+        captureAudioSource->deleteLater();
+        captureAudioSource = nullptr;
+        captureAudioIo = nullptr;
+    }
     disconnect(&m_ndiSender, &NdiSender::onMetadataReceived, this, &MainWindow::onNdiSenderMetadataReceived);
     disconnect(&m_ndiSender, &NdiSender::onReceiverCountChanged, this, &MainWindow::onNdiSenderReceiverCountChanged);
     m_ndiSender.stop();
@@ -434,4 +449,16 @@ void MainWindow::onNdiSenderReceiverCountChanged(int receiverCount)
 {
     qDebug() << "onReceiverCountChanged(" << receiverCount << ")";
     //...
+}
+
+void MainWindow::onCaptureAudioReadyRead()
+{
+    if (!captureAudioIo) return;
+    auto data = captureAudioIo->readAll();
+    if (data.isEmpty()) return;
+    int frameCount = captureAudioFormat.framesForBytes(data.size());
+    if (frameCount <= 0) return;
+    m_ndiSender.sendAudioFrame(reinterpret_cast<const float*>(data.constData()),
+                               frameCount, captureAudioFormat.sampleRate(),
+                               captureAudioFormat.channelCount());
 }
