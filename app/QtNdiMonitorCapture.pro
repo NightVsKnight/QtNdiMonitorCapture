@@ -9,22 +9,19 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 INCLUDEPATH += ../lib/
-INCLUDEPATH += ../lib/GraphicsCapture/
+
+win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../lib/release/ -lQtNdi
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../lib/debug/ -lQtNdi
+else:unix: LIBS += -L$$OUT_PWD/../lib/ -lQtNdi
+
+DEPENDPATH += $$PWD/../lib
 
 HEADERS += \
-    MainWindow.h \
-    ../lib/ndireceiver.h \
-    ../lib/ndireceiverworker.h \
-    ../lib/ndisender.h \
-    ../lib/ndiwrapper.h
+    MainWindow.h
 
 SOURCES += \
     main.cpp \
     MainWindow.cpp \
-    ../lib/ndireceiver.cpp \
-    ../lib/ndireceiverworker.cpp \
-    ../lib/ndisender.cpp \
-    ../lib/ndiwrapper.cpp
 
 RESOURCES = resources.qrc
 

@@ -3,8 +3,8 @@ if ( $PSVersionTable.PSVersion -lt "7.0.0" ) {
     exit 1
 }
 
-if (!$env:Qt6_DIR) {
-    Write-Host "ERROR: `$env:Qt6_DIR must be defined" -ForegroundColor Yellow
+if (!$env:QT_ROOT_DIR) {
+    Write-Host "ERROR: `$env:QT_ROOT_DIR must be defined" -ForegroundColor Yellow
     Exit 1
 }
 
@@ -45,37 +45,40 @@ if (-not (Test-Path "$env:VCINSTALLDIR")) {
 $SystemCoreCount = (Get-CimInstance -ClassName Win32_ComputerSystem).NumberOfLogicalProcessors
 "SystemCoreCount=$SystemCoreCount"
 
-$Qt6Dir = Resolve-Path -Path ${env:Qt6_DIR}
+$Qt6Dir = Resolve-Path -Path ${env:QT_ROOT_DIR}
 "Qt6Dir=$Qt6Dir"
 $QtVersion = (Get-Item $Qt6Dir\..).Basename.Replace(".", "_")
 "QtVersion=$QtVersion"
 $QtIfwVersion = (Get-ChildItem $Qt6Dir\..\..\Tools\QtInstallerFramework | Sort-Object -Property {$_.Name -as [int]} | Select-Object -Last 1).Basename
 "QtIfwVersion=$QtIfwVersion"
-$env:QtIfwVersion = $QtIfwVersion
+$env:QtIfwVersion = $QtIfwVersion # Use in QtNdiMonitorCapture.pro to calc QT_IFW_DIR
 $QtJomDir = Resolve-Path -Path $Qt6Dir\..\..\Tools\QtCreator\bin\jom
 "QtJomDir=$QtJomDir"
 
 $CheckoutDir = Resolve-Path -Path "$PSScriptRoot\.."
 $AppName = (Get-Item $CheckoutDir).Basename
-$BuildDir = "${CheckoutDir}\app\build-ci-${AppName}-Desktop_Qt_${QtVersion}_MSVC2019_64bit-Release"
+$BuildDir = "${CheckoutDir}\build-ci-${AppName}-Desktop_Qt_${QtVersion}_MSVC2022_64bit-Release"
 "BuildDir=$BuildDir"
 
 New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
 
 Push-Location $BuildDir
 
-& $Qt6Dir\bin\qmake.exe ..\QtNdiMonitorCapture.pro -spec win32-msvc $args
+"qmake ..."
+& $Qt6Dir\bin\qmake.exe ..\QtNdiProject.pro -spec win32-msvc $args
 if ($LASTEXITCODE) {
     Pop-Location
     Exit 1
 }
 
+"jom qmake_all ..."
 & $QtJomDir\jom.exe qmake_all
 if ($LASTEXITCODE) {
     Pop-Location
     Exit 1
 }
 
+"jom ..."
 & $QtJomDir\jom.exe /J $SystemCoreCount
 if ($LASTEXITCODE) {
     Pop-Location

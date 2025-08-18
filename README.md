@@ -72,20 +72,22 @@ Requirements:
 * Qt6 6.9.1 installed with the following components:
   * MSVC 2022 64-bit
   * Qt Multimedia
-  * Qt Creator 9.0.2
-  * Qt Installer Framework 4.5
-* NDI Advanced SDK to be installed.  
-  I could have just required the non-Advanced SDK, but I hope to one day add KVM support, which requires the Advanced SDK.
+  * Qt Creator 17.0.0
+  * Qt Installer Framework 4.10.0
+* NDI [Advanced] SDK installed.  
+  I could have just required the non-Advanced SDK,
+  but I hope to one day add KVM support,
+  which requires the Advanced SDK.
 
 ### Steps:
 
-#### Qt Creator 9.0.2 IDE
+#### Qt Creator 17.0.0 IDE
 1. Launch Qt Creator
-2. Open the QtNdiMonitorCapture.pro file
+2. Open the QtNdiProject.pro file
 3. Build and Run
 
-#### PowerShell 7.3.3 Command-Line
-1. `$env:Qt6_DIR = 'C:\Qt\6.4.2\msvc2019_64\'`
+#### PowerShell 7.5.2 Command-Line
+1. `$env:QT_ROOT_DIR = 'C:\Qt\6.9.1\msvc2022_64\'`
 2. `CI\windows-build.ps1 "CONFIG+=package"`
 
 ## TODO
