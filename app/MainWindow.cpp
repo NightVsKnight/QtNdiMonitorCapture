@@ -6,6 +6,7 @@
 #include <QContextMenuEvent>
 #include <QCoreApplication>
 #include <QDebug>
+#include <QMessageBox>
 #include <QMediaCaptureSession>
 #include <QMenu>
 #include <QVideoSink>
@@ -91,10 +92,23 @@ void MainWindow::closeEvent(QCloseEvent* event)
 {
     if (captureScreen->isActive())
     {
-        qDebug() << "TODO: Prompt if they really want to stop capturing and close";
-        hide();
-        event->ignore();
+        auto reply = QMessageBox::question(this,
+                                           tr("Capture Running"),
+                                           tr("A capture is currently active.\nDo you really want to exit?"),
+                                           QMessageBox::Yes | QMessageBox::No,
+                                           QMessageBox::No);
+        if (reply == QMessageBox::Yes)
+        {
+            captureStop();
+        }
+        else
+        {
+            hide();
+            event->ignore();
+            return;
+        }
     }
+    QMainWindow::closeEvent(event);
 }
 
 void MainWindow::showEvent(QShowEvent*)
