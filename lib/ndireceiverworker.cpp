@@ -34,6 +34,8 @@ void NdiReceiverWorker::init()
     m_selectedSourceName = nullptr;
     m_bMuteAudio = false;
     m_cIDX = nullptr;
+    m_audioOutputDevice = QMediaDevices::defaultAudioOutput();
+    m_bAudioOutputDeviceChanged = false;
     qDebug() << "-init()";
 }
 
@@ -65,6 +67,12 @@ void NdiReceiverWorker::sendMetadata(const QString& metadata)
     m_listMetadatasToSend.append(metadata);
 }
 
+void NdiReceiverWorker::setAudioOutputDevice(const QAudioDevice& audioDevice)
+{
+    m_audioOutputDevice = audioDevice;
+    m_bAudioOutputDeviceChanged = true;
+}
+
 void NdiReceiverWorker::stop()
 {
     qDebug() << "+stop()";
@@ -89,16 +97,16 @@ void NdiReceiverWorker::run()
     //format.setChannelConfig(QAudioFormat::ChannelConfigStereo);
     qDebug() << "audioFormat" << audioFormat;
 
-    auto audioOutputDevice = QMediaDevices::defaultAudioOutput();
-    if (audioOutputDevice.isFormatSupported(audioFormat))
+    auto audioOutputDevice = m_audioOutputDevice;
+    if (!audioOutputDevice.isNull() && audioOutputDevice.isFormatSupported(audioFormat))
     {
         pAudioOutputSink = new QAudioSink(audioOutputDevice, audioFormat, this);
         pAudioOutputSink->setVolume(1.0);
         pAudioIoDevice = pAudioOutputSink->start();
     }
-    else
+    else if (!audioOutputDevice.isNull())
     {
-        qWarning() << "process: Requested audio format is not supported by the default audio device.";
+        qWarning() << "process: Requested audio format is not supported by the audio device.";
     }
 
     NDIlib_video_frame_v2_t video_frame;
@@ -121,6 +129,30 @@ void NdiReceiverWorker::run()
 
     while (m_bIsRunning)
     {
+        if (m_bAudioOutputDeviceChanged)
+        {
+            m_bAudioOutputDeviceChanged = false;
+            if (pAudioOutputSink)
+            {
+                pAudioOutputSink->stop();
+                delete pAudioOutputSink;
+                pAudioOutputSink = nullptr;
+                pAudioIoDevice = nullptr;
+            }
+
+            audioOutputDevice = m_audioOutputDevice;
+            if (!audioOutputDevice.isNull() && audioOutputDevice.isFormatSupported(audioFormat))
+            {
+                pAudioOutputSink = new QAudioSink(audioOutputDevice, audioFormat, this);
+                pAudioOutputSink->setVolume(1.0);
+                pAudioIoDevice = pAudioOutputSink->start();
+            }
+            else if (!audioOutputDevice.isNull())
+            {
+                qWarning() << "process: Requested audio format is not supported by the audio device.";
+            }
+        }
+
         //
         // TODO: CLEAN UP THIS MESS: BEGIN!
         //

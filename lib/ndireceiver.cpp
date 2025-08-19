@@ -1,6 +1,7 @@
 #include "ndireceiver.h"
 
 #include <QDebug>
+#include <QAudioDevice>
 
 NdiReceiver::NdiReceiver(QObject *parent)
     : QObject(parent)
@@ -29,6 +30,8 @@ void NdiReceiver::init()
     connect(&m_workerNdiReceiver, &NdiReceiverWorker::onSourceConnected, this, &NdiReceiver::onSourceConnected);
     connect(&m_workerNdiReceiver, &NdiReceiverWorker::onVideoFrameReceived, this, &NdiReceiver::onVideoFrameReceived);
     connect(&m_workerNdiReceiver, &NdiReceiverWorker::onSourceDisconnected, this, &NdiReceiver::onSourceDisconnected);
+    qRegisterMetaType<QAudioDevice>("QAudioDevice");
+    connect(this, &NdiReceiver::audioOutputDeviceChanged, &m_workerNdiReceiver, &NdiReceiverWorker::setAudioOutputDevice);
 
     qDebug() << "-init()";
 }
@@ -72,4 +75,9 @@ void NdiReceiver::sendMetadata(const QString& metadata)
 void NdiReceiver::muteAudio(bool bMute)
 {
     m_workerNdiReceiver.muteAudio(bMute);
+}
+
+void NdiReceiver::setAudioOutputDevice(const QAudioDevice& device)
+{
+    emit audioOutputDeviceChanged(device);
 }
