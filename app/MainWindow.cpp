@@ -26,6 +26,7 @@ MainWindow::MainWindow(QWidget* parent)
     , m_videoWidget(this)
     , m_ndiReceiver(this)
     , m_ndiSender(this)
+    , m_selectedAudioOutputDevice(QMediaDevices::defaultAudioOutput())
 {
     setWindowTitle(QCoreApplication::applicationName());
     QIcon icon(":/Logos/NDI_Yellow_Inverted.ico");
@@ -45,6 +46,8 @@ MainWindow::MainWindow(QWidget* parent)
 
     createActions();
     createTrayIcon();
+
+    m_ndiReceiver.setAudioOutputDevice(m_selectedAudioOutputDevice);
 }
 
 MainWindow::~MainWindow()
@@ -160,11 +163,25 @@ void MainWindow::contextMenuEvent(QContextMenuEvent* event)
     }
     // Add audio output devices
     auto audioOutputMenu = menu.addMenu(tr("Audio Output Devices"));
+    auto noneAudioAction = audioOutputMenu->addAction(tr("None"));
+    noneAudioAction->setCheckable(true);
+    if (m_selectedAudioOutputDevice.isNull())
+    {
+        noneAudioAction->setChecked(true);
+    }
+    connect(noneAudioAction, &QAction::triggered, this, &MainWindow::onActionAudioOutputDeviceTriggered);
+
     const auto audioOutputs = QMediaDevices::audioOutputs();
     for (const auto &device : audioOutputs)
     {
         auto action = audioOutputMenu->addAction(device.description());
-        action->setEnabled(false);
+        action->setCheckable(true);
+        if (!m_selectedAudioOutputDevice.isNull() && device.id() == m_selectedAudioOutputDevice.id())
+        {
+            action->setChecked(true);
+        }
+        action->setData(QString::fromUtf8(device.id()));
+        connect(action, &QAction::triggered, this, &MainWindow::onActionAudioOutputDeviceTriggered);
     }
     menu.addSeparator();
     menu.addAction(m_pActionExit);
@@ -326,6 +343,30 @@ void MainWindow::onActionExitTriggered()
 {
     qDebug() << "onActionExitTriggered()";
     QApplication::exit(0);
+}
+
+void MainWindow::onActionAudioOutputDeviceTriggered()
+{
+    auto action = qobject_cast<QAction*>(sender());
+    if (!action) return;
+    auto id = action->data().toString();
+    if (id.isEmpty())
+    {
+        m_selectedAudioOutputDevice = QAudioDevice();
+        m_ndiReceiver.setAudioOutputDevice(m_selectedAudioOutputDevice);
+        return;
+    }
+
+    const auto audioOutputs = QMediaDevices::audioOutputs();
+    for (const auto &device : audioOutputs)
+    {
+        if (QString::fromUtf8(device.id()) == id)
+        {
+            m_selectedAudioOutputDevice = device;
+            m_ndiReceiver.setAudioOutputDevice(device);
+            break;
+        }
+    }
 }
 
 void MainWindow::setFullScreen(bool fullScreen)

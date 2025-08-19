@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QSharedDataPointer>
 #include <QThread>
+#include <QAudioDevice>
 
 #include "ndireceiverworker.h"
 
@@ -22,12 +23,14 @@ public:
     void selectSource(const QString& sourceName);
     void sendMetadata(const QString& metadata);
     void muteAudio(bool bMute);
+    void setAudioOutputDevice(const QAudioDevice& device);
 
 signals:
     void onSourceConnected(const QString& sourceName);
     void onMetadataReceived(const QString& metadata);
     void onVideoFrameReceived(const QVideoFrame& videoFrame);
     void onSourceDisconnected(const QString& sourceName);
+    void audioOutputDeviceChanged(const QAudioDevice& device);
 
 private:
     NdiReceiverWorker m_workerNdiReceiver;

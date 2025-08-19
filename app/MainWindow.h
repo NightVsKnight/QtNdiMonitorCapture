@@ -6,6 +6,7 @@
 #include <QScreenCapture>
 #include <QSystemTrayIcon>
 #include <QtMultimediaWidgets/QVideoWidget>
+#include <QAudioDevice>
 
 #include "ndireceiver.h"
 #include "ndisender.h"
@@ -106,6 +107,7 @@ private slots:
     void onActionFullScreenTriggered();
     void onActionRestoreWindowTriggered();
     void onActionExitTriggered();
+    void onActionAudioOutputDeviceTriggered();
 
 private:
     void setFullScreen(bool fullScreen);
@@ -129,6 +131,7 @@ private slots:
 private:
     QString m_selectedCaptureScreenName;
     NdiSender m_ndiSender;
+    QAudioDevice m_selectedAudioOutputDevice;
 private slots:
     void onMediaCaptureVideoFrame(const QVideoFrame &frame);
     void onNdiSenderMetadataReceived(QString metadata);

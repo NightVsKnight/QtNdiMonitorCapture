@@ -2,6 +2,7 @@
 #define NDIRECEIVERWORKER_H
 
 #include <QObject>
+#include <QAudioDevice>
 #include <QAudioFormat>
 #include <QAudioSink>
 #include <QList>
@@ -39,6 +40,7 @@ signals:
 public slots:
     void run();
     void stop();
+    void setAudioOutputDevice(const QAudioDevice& audioDevice);
 
 private:
     bool               m_bReconnect;
@@ -55,6 +57,9 @@ private:
     QString            m_cIDX;
 
     float              m_fAudioLevels[MAX_AUDIO_LEVELS];
+
+    QAudioDevice       m_audioOutputDevice;
+    bool               m_bAudioOutputDeviceChanged;
 
     void init();
     void processVideo(const NDIlib_video_frame_v2_t& pVideoFrameNdi);
